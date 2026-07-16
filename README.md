@@ -1,85 +1,42 @@
-# speedrungames-game-template
+# Cinderborn — The Conclave Trials
 
-Vite + TypeScript starter for games that ship on [speedrungames.net](https://speedrungames.net).
+A single-file browser strategy game. Turn-based hex tactics: you are a lowcaste
+Cinder remade to pass as one of the ruling Lumen, thrown into the Conclave
+Trials — a proving-ground war between six noble houses. Conquer rival keeps,
+free the shackled captives of fallen houses to swell your ranks, and when the
+Arbiters rig the trial against you, storm their Spire.
 
-What you get out of the box:
+## Run it
 
-- **Canvas game loop** with deltaTime, DPR-aware resize
-- **Millisecond-precision speedrun timer** with pause/resume, splits, finish
-- **Personal-best persistence** via `localStorage`
-- **HUD overlay** (time, PB, status)
-- **CI** that typechecks, builds, and verifies relative paths on every PR
-- **Netlify config** that just works — push to `main`, get a live site
+Open `index.html` in any modern browser. No build step, no dependencies.
 
-A playable demo (click N targets as fast as you can) ships in the template so a new repo deploys to a working game on day one.
+## Controls
 
-## Quickstart
+- **Click** a unit to select it; blue hexes = movement, red rings = attack targets.
+- **Click** a blue hex to move, a red-ringed enemy to attack (move + attack each turn).
+- Walk onto a **shackled marker** (chain icon) to free that unit — it joins you.
+- Recruit at your keep with the sidebar buttons (units deploy adjacent to the keep).
+- **End Turn** button or **E** key. **Esc** deselects.
 
-```bash
-# 1. Create your game repo from this template:
-gh repo create Brynrg/game-<slug> --public \
-  --template Brynrg/speedrungames-game-template --clone
-cd game-<slug>
-npm install
+## Win / lose
 
-# 2. Set the storage namespace.
-# In src/storage.ts, replace SLUG = "REPLACE_ME" with your slug.
+- Defeat houses by taking their keep tile. When 3 houses have fallen, the
+  central **Spire** unlocks (and its Arbiter guard wakes). End a unit's move on
+  the Spire to win.
+- You lose if your keep falls or your entire force is destroyed with no supply
+  to rebuild.
 
-# 3. Build your game in src/main.ts (replace the gameplay section).
+## Design & IP notes
 
-# 4. Run locally.
-npm run dev   # → http://localhost:5173
+This game is *loosely inspired by* the themes of caste-dystopia fiction
+(a lowborn infiltrator; an academy war-game; victory through liberating the
+conquered). Those are **ideas and mechanics**, which copyright does not
+protect. Everything expressive here is original to this project:
 
-# 5. Push to main. CI runs (typecheck, build, path lint).
-# 6. Connect to Netlify (one-time): netlify.com → Add new site → import this repo → Deploy.
-# 7. In Brynrg/speedrungames, add one entry to apps/web/src/lib/games.data.json with proxyTo.
+- Original world (city-state of Vael, Lumen/Cinder castes, the Conclave,
+  Arbiters, the Spire) — no names, characters, dialogue, or text are taken
+  from any novel.
+- No trademarks or trade dress of any franchise are used.
+- All art is procedural canvas drawing; all text was written for this game.
 
-# After that: every push to main on this repo updates the live game on speedrungames.net.
-```
-
-See [AGENTS.md](AGENTS.md) for the full build playbook and API quick references.
-
-## Stack
-
-| | |
-|---|---|
-| Language | TypeScript (strict) |
-| Bundler | Vite 5 |
-| Runtime | Node 22 (CI + Netlify) |
-| Host | Netlify (per-game site) |
-| Lint | Built-in path check (`scripts/check-relative-paths.mjs`) |
-
-## Layout
-
-```
-.
-├── src/
-│   ├── main.ts            # Entry — replace gameplay section
-│   ├── game.ts            # Canvas + rAF loop
-│   ├── speedrun.ts        # Timer, splits, formatTime
-│   ├── storage.ts         # PB persistence (CHANGE SLUG!)
-│   ├── ui.ts              # HUD overlay
-│   └── styles.css
-├── scripts/
-│   └── check-relative-paths.mjs
-├── .github/workflows/ci.yml
-├── index.html
-├── vite.config.ts          # base: "./" — required
-├── tsconfig.json
-└── netlify.toml
-```
-
-## Going plain-static (no bundler)
-
-Some games (Phaser, hand-rolled HTML+JS) don't need Vite. To switch:
-
-1. Move your `index.html` and assets to the repo root.
-2. In `netlify.toml`, comment out `command` and set `publish = "."`.
-3. Delete `src/`, `vite.config.ts`, `tsconfig.json`, and the build steps from CI.
-
-Keep all asset paths relative (`./foo.png`).
-
-## See also
-
-- Umbrella repo: [Brynrg/speedrungames](https://github.com/Brynrg/speedrungames)
-- Speedrungames playbook: [Brynrg/speedrungames/AGENTS.md](https://github.com/Brynrg/speedrungames/blob/main/AGENTS.md)
+Do not add franchise names, character names, or quoted text when extending it.

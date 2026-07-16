@@ -1,0 +1,897 @@
+import "./styles.css";
+
+/* Cinderborn — The Conclave Trials
+   Turn-based hex strategy. Vanilla JS + canvas, no dependencies.
+   All names, text, and art original to this project. */
+
+"use strict";
+
+/* ---------------- config ---------------- */
+
+const R = 7;                 // map radius in hexes
+const SQ3 = Math.sqrt(3);
+
+const TYPES = {
+  blade:  { name: "Blade",  glyph: "B", hp: 12, atk: 4, rng: 1, mv: 3, cost: 6,
+            desc: "Cheap line infantry." },
+  archer: { name: "Archer", glyph: "A", hp: 8,  atk: 3, rng: 2, mv: 2, cost: 8,
+            desc: "Strikes from two hexes." },
+  warden: { name: "Warden", glyph: "W", hp: 18, atk: 3, rng: 1, mv: 2, cost: 10,
+            desc: "Slow, hard to kill." },
+  enforcer: { name: "Enforcer", glyph: "E", hp: 20, atk: 5, rng: 1, mv: 3, cost: 0,
+            desc: "Arbiter steel. Hunts you." },
+};
+
+const HOUSE_DEFS = [
+  { id: 0, name: "You — the Cinder",  motto: "Wearing stolen light.",                    color: "#e8642c", player: true,  keep: [0, 6] },
+  { id: 1, name: "House Vorthos", motto: "Iron wills temper the soul.",             color: "#4f8fd4", keep: [6, 0],  persona: "aggressive" },
+  { id: 2, name: "House Kaelen",  motto: "Shadows dance where light dares not.",    color: "#8a5fd6", keep: [6, -6], persona: "expansionist" },
+  { id: 3, name: "House Mirex",   motto: "Silence is the sharpest blade.",          color: "#3fb58a", keep: [0, -6], persona: "defensive" },
+  { id: 4, name: "House Oryn",    motto: "Blood binds tighter than golden chains.", color: "#c94f6d", keep: [-6, 0], persona: "aggressive" },
+  { id: 5, name: "House Syla",    motto: "Grace is the mask of a hungry heart.",    color: "#d4a53f", keep: [-6, 6], persona: "expansionist" },
+];
+const ARB = 99; // arbiter house id
+const ARB_COLOR = "#cfd6e4";
+
+const DIRS = [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+
+/* ---------------- state ---------------- */
+
+let tiles, units, shackled, houses, turn, renown, defeated, playerFalls, selected;
+let spireUnlocked, arbStage, uidSeq, gameOver, busy;
+let reachCache = null; // {unitId, moves:Map(key->cost), targets:Set(unitId)}
+
+const canvas = document.getElementById("board");
+const ctx = canvas.getContext("2d");
+let view = { s: 30, ox: 0, oy: 0 }; // hex size + pixel offset
+
+/* ---------------- helpers ---------------- */
+
+const key = (q, r) => q + "," + r;
+const hexDist = (a, b) =>
+  (Math.abs(a.q - b.q) + Math.abs(a.r - b.r) + Math.abs(a.q + a.r - b.q - b.r)) / 2;
+const tileAt = (q, r) => tiles.get(key(q, r));
+const unitAt = (q, r) => units.find(u => u.q === q && u.r === r && u.hp > 0);
+const shackleAt = (q, r) => shackled.find(s => s.q === q && s.r === r);
+const houseById = id => houses.find(h => h.id === id);
+const rnd = n => Math.floor(Math.random() * n);
+
+function toPixel(q, r) {
+  return { x: view.ox + view.s * SQ3 * (q + r / 2), y: view.oy + view.s * 1.5 * r };
+}
+function fromPixel(x, y) {
+  const q = ((x - view.ox) * SQ3 / 3 - (y - view.oy) / 3) / view.s;
+  const r = (y - view.oy) * 2 / 3 / view.s;
+  // cube round
+  let rq = Math.round(q), rr = Math.round(r), rs = Math.round(-q - r);
+  const dq = Math.abs(rq - q), dr = Math.abs(rr - r), ds = Math.abs(rs + q + r);
+  if (dq > dr && dq > ds) rq = -rr - rs;
+  else if (dr > ds) rr = -rq - rs;
+  return { q: rq, r: rr };
+}
+
+/* ---------------- map generation ---------------- */
+
+function generateMap() {
+  tiles = new Map();
+  for (let q = -R; q <= R; q++)
+    for (let r = Math.max(-R, -q - R); r <= Math.min(R, -q + R); r++) {
+      const roll = Math.random();
+      let terrain = "plains";
+      if (roll < 0.13) terrain = "forest";
+      else if (roll < 0.21) terrain = "mountain";
+      else if (roll < 0.26) terrain = "water";
+      tiles.set(key(q, r), { q, r, terrain, camp: false, campOwner: null, keep: null, spire: false, ruin: false });
+    }
+
+  // spire at center, clear approach
+  for (const t of tiles.values())
+    if (hexDist(t, { q: 0, r: 0 }) <= 1) t.terrain = "plains";
+  tileAt(0, 0).spire = true;
+
+  // keeps: clear a pocket around each
+  for (const h of HOUSE_DEFS) {
+    const [q, r] = h.keep;
+    for (const t of tiles.values())
+      if (hexDist(t, { q, r }) <= 1) t.terrain = "plains";
+    tileAt(q, r).keep = h.id;
+  }
+
+  // carve passable lines keep -> center so nothing is walled off
+  for (const h of HOUSE_DEFS) {
+    let [q, r] = h.keep;
+    while (q !== 0 || r !== 0) {
+      let best = null, bd = Infinity;
+      for (const [dq, dr] of DIRS) {
+        const d = hexDist({ q: q + dq, r: r + dr }, { q: 0, r: 0 });
+        if (d < bd) { bd = d; best = [q + dq, r + dr]; }
+      }
+      [q, r] = best;
+      const t = tileAt(q, r);
+      if (t && (t.terrain === "mountain" || t.terrain === "water")) t.terrain = "plains";
+    }
+  }
+
+  // supply camps: 10, on open ground, away from keeps and spire
+  const open = [...tiles.values()].filter(t =>
+    t.terrain === "plains" && !t.keep && !t.spire &&
+    hexDist(t, { q: 0, r: 0 }) >= 3 &&
+    HOUSE_DEFS.every(h => hexDist(t, { q: h.keep[0], r: h.keep[1] }) >= 3));
+  for (let i = 0; i < 10 && open.length; i++) {
+    const t = open.splice(rnd(open.length), 1)[0];
+    t.camp = true;
+  }
+}
+
+/* ---------------- setup ---------------- */
+
+function newGame() {
+  generateMap();
+  houses = HOUSE_DEFS.map(h => ({ ...h, alive: true, supply: 10 }));
+  units = []; shackled = []; uidSeq = 1;
+  turn = 1; renown = 0; defeated = 0; playerFalls = 0; selected = null;
+  spireUnlocked = false; arbStage = 0; gameOver = false; busy = false;
+  reachCache = null;
+
+  for (const h of houses) {
+    const spots = freeNeighbors(h.keep[0], h.keep[1]);
+    spawnUnit(h.id, "blade", ...spots[0]);
+    spawnUnit(h.id, "blade", ...spots[1]);
+    spawnUnit(h.id, "archer", ...spots[2]);
+  }
+  units.forEach(u => { u.moved = false; u.attacked = false; });
+
+  log("The gates open; the trial of light begins.", "hot");
+  log("Fell three houses and the Spire will unlock.");
+  layoutView();
+  render(); updatePanel();
+}
+
+function freeNeighbors(q, r) {
+  const out = [];
+  for (const [dq, dr] of DIRS) {
+    const t = tileAt(q + dq, r + dr);
+    if (t && passableTerrain(t) && !t.spire && !unitAt(t.q, t.r) && !shackleAt(t.q, t.r))
+      out.push([t.q, t.r]);
+  }
+  return out;
+}
+
+function spawnUnit(house, type, q, r) {
+  const T = TYPES[type];
+  units.push({ id: uidSeq++, house, type, q, r, hp: T.hp, maxhp: T.hp,
+               moved: true, attacked: true, freed: false });
+}
+
+function passableTerrain(t) {
+  if (!t) return false;
+  if (t.terrain === "mountain" || t.terrain === "water") return false;
+  if (t.spire && !spireUnlocked) return false;
+  return true;
+}
+
+/* ---------------- movement / combat ---------------- */
+
+// BFS reachable tiles for a unit. Enemies block; allies can be passed, not landed on.
+function reachable(u) {
+  const T = TYPES[u.type];
+  const dist = new Map([[key(u.q, u.r), 0]]);
+  const frontier = [{ q: u.q, r: u.r, d: 0 }];
+  while (frontier.length) {
+    const cur = frontier.shift();
+    if (cur.d >= T.mv) continue;
+    for (const [dq, dr] of DIRS) {
+      const q = cur.q + dq, r = cur.r + dr, k = key(q, r);
+      if (dist.has(k)) continue;
+      const t = tileAt(q, r);
+      if (!passableTerrain(t)) continue;
+      const occ = unitAt(q, r);
+      if (occ && occ.house !== u.house) continue;         // enemies block
+      dist.set(k, cur.d + 1);
+      frontier.push({ q, r, d: cur.d + 1 });
+    }
+  }
+  // can't END on any unit's tile (own tile excepted)
+  const moves = new Map();
+  for (const [k, d] of dist) {
+    const [q, r] = k.split(",").map(Number);
+    if (q === u.q && r === u.r) continue;
+    if (unitAt(q, r)) continue;
+    moves.set(k, d);
+  }
+  return moves;
+}
+
+function attackableFrom(u) {
+  const T = TYPES[u.type];
+  const out = [];
+  for (const e of units)
+    if (e.hp > 0 && e.house !== u.house && hexDist(u, e) <= T.rng) out.push(e);
+  return out;
+}
+
+function computeReach(u) {
+  reachCache = {
+    unitId: u.id,
+    moves: u.moved ? new Map() : reachable(u),
+    targets: new Set(u.attacked ? [] : attackableFrom(u).map(e => e.id)),
+  };
+}
+
+function doMove(u, q, r) {
+  u.q = q; u.r = r; u.moved = true;
+  const t = tileAt(q, r);
+
+  // liberate a shackled captive
+  const sh = shackleAt(q, r);
+  if (sh && u.house === 0) {
+    shackled = shackled.filter(s => s !== sh);
+    const spots = freeNeighbors(q, r);
+    if (spots.length) {
+      const T = TYPES[sh.type];
+      units.push({ id: uidSeq++, house: 0, type: sh.type, q: spots[0][0], r: spots[0][1],
+                   hp: Math.max(1, Math.ceil(T.hp * 0.6)), maxhp: T.hp,
+                   moved: true, attacked: true, freed: true });
+      renown += 1;
+      log("Chains break; the forgotten rise to fight again.", "gold");
+    } else log("No room to unshackle the captive here.");
+  }
+
+  if (t.camp && t.campOwner !== u.house) {
+    t.campOwner = u.house;
+    if (u.house === 0) log("Supply camp seized. +2 supply per turn.");
+  }
+  if (t.keep !== null && t.keep !== u.house) captureKeep(u, t);
+  if (t.spire && spireUnlocked && u.house === 0) return win();
+  afterAction();
+}
+
+function doAttack(u, e) {
+  u.attacked = true; u.moved = true; // attacking ends the unit's activation
+  strike(u, e);
+  if (e.hp > 0) { // counterattack if the defender can reach back
+    const eT = TYPES[e.type];
+    if (hexDist(u, e) <= eT.rng) strike(e, u, true);
+  }
+  afterAction();
+}
+
+function strike(a, d, isCounter) {
+  const t = tileAt(d.q, d.r);
+  let dmg = TYPES[a.type].atk + rnd(2) - (t.terrain === "forest" ? 1 : 0)
+            - (t.keep !== null && t.keep === d.house ? 2 : 0); // walls of home
+  dmg = Math.max(1, dmg);
+  d.hp -= dmg;
+  if (d.hp <= 0) kill(a, d);
+  else if (!isCounter && a.house === 0)
+    log(`${TYPES[a.type].name} strikes for ${dmg}.`);
+}
+
+let firstBlood = false;
+function kill(killer, dead) {
+  dead.hp = 0;
+  const deadHouse = houseById(dead.house);
+  if (!firstBlood && killer.house === 0) {
+    firstBlood = true;
+    log("First blood stains the pristine ground.", "hot");
+  }
+  // the fallen are shackled where they stood — unless they were Arbiter steel
+  if (dead.house !== ARB) {
+    shackled.push({ q: dead.q, r: dead.r, type: dead.type, from: dead.house });
+  } else {
+    log("An Arbiter enforcer falls. The judges felt that.", "gold");
+  }
+  units = units.filter(u => u.hp > 0);
+  if (deadHouse && deadHouse.alive && !units.some(u => u.house === dead.house) &&
+      deadHouse.supply < cheapestCost()) {
+    fellHouse(deadHouse, killer.house);
+  }
+}
+
+function cheapestCost() {
+  return Math.min(TYPES.blade.cost, TYPES.archer.cost, TYPES.warden.cost);
+}
+
+function captureKeep(u, t) {
+  const h = houseById(t.keep);
+  if (!h || !h.alive) { t.keep = null; t.ruin = true; return; }
+  fellHouse(h, u.house);
+  t.keep = null; t.ruin = true;
+}
+
+function fellHouse(h, byHouse) {
+  h.alive = false;
+  defeated++;
+  if (byHouse === 0) playerFalls++;
+  // its army is shackled where it stands
+  for (const u of units)
+    if (u.house === h.id) {
+      shackled.push({ q: u.q, r: u.r, type: u.type, from: h.id });
+      u.hp = 0;
+    }
+  units = units.filter(u => u.hp > 0);
+  for (const t of tiles.values())
+    if (t.campOwner === h.id) t.campOwner = byHouse === ARB ? null : byHouse;
+  log(`${h.name}'s banner burns in the ash.`, "hot");
+  if (byHouse === 0) renown += 3;
+  arbiterCheck();
+  if (h.player) return lose("Your keep has fallen. The trial devours another Cinder.");
+  updatePanel();
+}
+
+/* ---------------- arbiters: the rigged game ---------------- */
+
+function arbiterCheck() {
+  // the judges punish YOUR rise; the world's attrition merely opens the path
+  if (playerFalls >= 1 && arbStage < 1) {
+    arbStage = 1;
+    log("The judges watch; your secret breathes heavy.", "hot");
+  }
+  if ((playerFalls >= 2 || defeated >= 4) && arbStage < 2) {
+    arbStage = 2;
+    spawnEnforcers(2);
+    log("Cold steel steps echo — Arbiter enforcers take the field.", "hot");
+    log("The trial was never fair. It is even less fair now.");
+  }
+  if (defeated >= 3 && arbStage < 3) {
+    arbStage = 3;
+    spireUnlocked = true;
+    spawnEnforcers(3);
+    log("The core hums; the path to the Spire ascends.", "gold");
+    log("End a unit's move on the Spire to end the trial.", "gold");
+  }
+}
+
+function spawnEnforcers(n) {
+  let placed = 0, ring = 2;
+  while (placed < n && ring <= R) {
+    const cand = [...tiles.values()].filter(t =>
+      hexDist(t, { q: 0, r: 0 }) === ring && passableTerrain(t) &&
+      !t.spire && !unitAt(t.q, t.r) && !shackleAt(t.q, t.r));
+    while (placed < n && cand.length) {
+      const t = cand.splice(rnd(cand.length), 1)[0];
+      spawnUnit(ARB, "enforcer", t.q, t.r);
+      placed++;
+    }
+    ring++;
+  }
+}
+
+/* ---------------- AI ---------------- */
+
+function aiHouseTurn(h) {
+  // recruit
+  const keepT = [...tiles.values()].find(t => t.keep === h.id);
+  const myUnits = () => units.filter(u => u.house === h.id);
+  if (keepT) {
+    while (myUnits().length < 7) {
+      const picks = h.persona === "aggressive" ? ["blade", "blade", "archer", "warden"]
+                  : h.persona === "defensive"  ? ["warden", "archer", "blade"]
+                  : ["blade", "archer", "warden"];
+      const type = picks[rnd(picks.length)];
+      if (h.supply < TYPES[type].cost) break;
+      const spots = freeNeighbors(keepT.q, keepT.r);
+      if (!spots.length) break;
+      h.supply -= TYPES[type].cost;
+      spawnUnit(h.id, type, ...spots[0]);
+    }
+  }
+
+  // the unit nearest home holds the keep
+  let guard = null;
+  if (keepT) {
+    const mine = myUnits();
+    if (mine.length)
+      guard = mine.reduce((a, b) => hexDist(a, keepT) <= hexDist(b, keepT) ? a : b);
+  }
+
+  for (const u of myUnits()) {
+    if (u.hp <= 0) continue;
+    u.moved = false; u.attacked = false;
+
+    // guard duty: stay by the keep unless intruders are close
+    if (u === guard && keepT) {
+      const intruder = units.some(e => e.house !== h.id && e.hp > 0 && hexDist(e, keepT) <= 3);
+      if (!intruder) {
+        if (hexDist(u, keepT) > 1) {
+          const moves = reachable(u);
+          let best = null, bd = hexDist(u, keepT);
+          for (const [k] of moves) {
+            const [q, r] = k.split(",").map(Number);
+            const d = hexDist({ q, r }, keepT);
+            if (d < bd) { bd = d; best = { q, r }; }
+          }
+          if (best) { u.q = best.q; u.r = best.r; }
+        }
+        const near = attackableFrom(u);
+        if (near.length) doAttackAI(u, near.sort((a, b) => a.hp - b.hp)[0]);
+        u.moved = true; u.attacked = true;
+        continue;
+      }
+    }
+
+    // attack if possible
+    let targets = attackableFrom(u);
+    if (targets.length) {
+      targets.sort((a, b) => a.hp - b.hp);
+      doAttackAI(u, targets[0]);
+      continue;
+    }
+
+    // otherwise move toward best objective
+    const goal = pickGoal(u, h);
+    if (!goal) continue;
+    const moves = reachable(u);
+    let best = null, bd = hexDist(u, goal);
+    for (const [k] of moves) {
+      const [q, r] = k.split(",").map(Number);
+      const d = hexDist({ q, r }, goal);
+      if (d < bd) { bd = d; best = { q, r }; }
+    }
+    if (best) {
+      u.q = best.q; u.r = best.r;
+      const t = tileAt(u.q, u.r);
+      const sh = shackleAt(u.q, u.r);
+      if (sh) { // enslave the fallen
+        shackled = shackled.filter(s => s !== sh);
+        h.supply += 2;
+      }
+      if (t.camp && t.campOwner !== h.id) t.campOwner = h.id;
+      if (t.keep !== null && t.keep !== h.id) captureKeep(u, t);
+      if (gameOver) return;
+      // attack after moving
+      targets = attackableFrom(u);
+      if (targets.length) {
+        targets.sort((a, b) => a.hp - b.hp);
+        doAttackAI(u, targets[0]);
+      }
+    }
+    u.moved = true; u.attacked = true;
+  }
+}
+
+function doAttackAI(u, e) {
+  strike(u, e);
+  if (e.hp > 0 && hexDist(u, e) <= TYPES[e.type].rng) strike(e, u, true);
+  u.moved = true; u.attacked = true;
+}
+
+function pickGoal(u, h) {
+  const goals = [];
+  for (const e of units)
+    if (e.house !== h.id && e.hp > 0)
+      goals.push({ q: e.q, r: e.r, w: e.house === 0 && h.persona === "aggressive" ? 0.8 : 1 });
+  const earlyGame = turn < 6 ? 2.2 : 1; // expand before conquering
+  for (const t of tiles.values()) {
+    if (t.keep !== null && t.keep !== h.id && houseById(t.keep)?.alive)
+      goals.push({ q: t.q, r: t.r, w: (h.persona === "aggressive" ? 0.8 : 1.2) * earlyGame });
+    if (t.camp && t.campOwner !== h.id)
+      goals.push({ q: t.q, r: t.r, w: h.persona === "expansionist" ? 0.5 : 1.0 });
+  }
+  for (const s of shackled) goals.push({ q: s.q, r: s.r, w: 0.9 });
+  if (!goals.length) return null;
+  goals.sort((a, b) => hexDist(u, a) * a.w - hexDist(u, b) * b.w);
+  return goals[0];
+}
+
+function aiArbiterTurn() {
+  for (const u of units.filter(x => x.house === ARB)) {
+    if (u.hp <= 0) continue;
+    const prey = units.filter(e => e.house === 0 && e.hp > 0);
+    if (!prey.length) return;
+    let targets = attackableFrom(u).filter(e => e.house === 0);
+    if (!targets.length) {
+      prey.sort((a, b) => hexDist(u, a) - hexDist(u, b));
+      const goal = prey[0];
+      const moves = reachable(u);
+      let best = null, bd = hexDist(u, goal);
+      for (const [k] of moves) {
+        const [q, r] = k.split(",").map(Number);
+        const d = hexDist({ q, r }, goal);
+        if (d < bd) { bd = d; best = { q, r }; }
+      }
+      if (best) { u.q = best.q; u.r = best.r; }
+      targets = attackableFrom(u).filter(e => e.house === 0);
+    }
+    if (targets.length) {
+      targets.sort((a, b) => a.hp - b.hp);
+      strike(u, targets[0]);
+      if (targets[0].hp > 0 && hexDist(u, targets[0]) <= TYPES[targets[0].type].rng)
+        strike(targets[0], u, true);
+    }
+  }
+}
+
+/* ---------------- turn flow ---------------- */
+
+function endTurn() {
+  if (gameOver || busy) return;
+  busy = true; selected = null; reachCache = null;
+  document.getElementById("endturn").disabled = true;
+  render();
+
+  setTimeout(() => {
+    for (const h of houses) {
+      if (gameOver) break;
+      if (!h.player && h.alive) aiHouseTurn(h);
+    }
+    if (!gameOver) aiArbiterTurn();
+    if (!gameOver) {
+      // income
+      for (const h of houses) {
+        if (!h.alive) continue;
+        let camps = 0;
+        for (const t of tiles.values()) if (t.campOwner === h.id) camps++;
+        h.supply += 3 + camps * 2;
+      }
+      turn++;
+      for (const u of units) if (u.house === 0) { u.moved = false; u.attacked = false; }
+      checkPlayerAlive();
+    }
+    busy = false;
+    document.getElementById("endturn").disabled = false;
+    render(); updatePanel();
+  }, 120);
+}
+
+function checkPlayerAlive() {
+  const me = houses[0];
+  if (!me.alive) return;
+  const hasUnits = units.some(u => u.house === 0);
+  if (!hasUnits && me.supply < cheapestCost())
+    lose("Your force is spent and your coffers are ash. The Conclave forgets your name.");
+}
+
+function win() {
+  if (gameOver) return;
+  gameOver = true;
+  log("You stand alone in the blinding truth.", "gold");
+  showEnd("THE SPIRE IS YOURS",
+    `The Arbiters' seat falls to a Cinder wearing stolen light. Turn ${turn}, renown ${renown}. ` +
+    `The trial is over — the reckoning above it has only begun.`);
+}
+
+function lose(text) {
+  if (gameOver) return;
+  gameOver = true;
+  houses[0].alive = false;
+  showEnd("THE TRIAL CONSUMES YOU", text);
+}
+
+function showEnd(title, text) {
+  document.getElementById("end-title").textContent = title;
+  document.getElementById("end-text").textContent = text;
+  document.getElementById("end").classList.remove("hidden");
+}
+
+function afterAction() {
+  if (selected) {
+    const u = units.find(x => x.id === selected);
+    if (!u || (u.moved && u.attacked)) { selected = null; reachCache = null; }
+    else computeReach(u);
+  }
+  render(); updatePanel();
+}
+
+/* ---------------- input ---------------- */
+
+canvas.addEventListener("click", ev => {
+  if (gameOver || busy) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = (ev.clientX - rect.left) * (canvas.width / rect.width);
+  const y = (ev.clientY - rect.top) * (canvas.height / rect.height);
+  const { q, r } = fromPixel(x, y);
+  const t = tileAt(q, r);
+  if (!t) { selected = null; reachCache = null; render(); updatePanel(); return; }
+
+  const clickedUnit = unitAt(q, r);
+  const sel = selected ? units.find(u => u.id === selected) : null;
+
+  if (sel && clickedUnit && reachCache?.targets.has(clickedUnit.id)) {
+    doAttack(sel, clickedUnit);
+    return;
+  }
+  if (sel && !clickedUnit && reachCache?.moves.has(key(q, r))) {
+    doMove(sel, q, r);
+    return;
+  }
+  if (clickedUnit && clickedUnit.house === 0) {
+    selected = clickedUnit.id;
+    computeReach(clickedUnit);
+  } else {
+    selected = null; reachCache = null;
+  }
+  render(); updatePanel();
+});
+
+window.addEventListener("keydown", ev => {
+  if (ev.key === "e" || ev.key === "E") endTurn();
+  if (ev.key === "Escape") { selected = null; reachCache = null; render(); updatePanel(); }
+});
+
+document.getElementById("endturn").addEventListener("click", endTurn);
+document.getElementById("begin").addEventListener("click", () => {
+  document.getElementById("title").classList.add("hidden");
+});
+document.getElementById("again").addEventListener("click", () => {
+  document.getElementById("end").classList.add("hidden");
+  document.getElementById("log").innerHTML = "";
+  firstBlood = false;
+  newGame();
+});
+
+for (const type of ["blade", "archer", "warden"]) {
+  const btn = document.getElementById("r-" + type);
+  btn.addEventListener("click", () => {
+    if (gameOver || busy) return;
+    const me = houses[0], T = TYPES[type];
+    if (me.supply < T.cost) return;
+    const keepT = [...tiles.values()].find(t => t.keep === 0);
+    if (!keepT) return;
+    const spots = freeNeighbors(keepT.q, keepT.r);
+    if (!spots.length) { log("No open ground beside your keep."); return; }
+    me.supply -= T.cost;
+    spawnUnit(0, type, ...spots[0]);
+    log(`${T.name} takes the field. Ready next turn.`);
+    render(); updatePanel();
+  });
+}
+
+/* ---------------- rendering ---------------- */
+
+const TERRAIN_FILL = {
+  plains: "#241f30", forest: "#1e2b26", mountain: "#332e3d", water: "#16202f",
+};
+
+function layoutView() {
+  canvas.width = canvas.clientWidth * devicePixelRatio;
+  canvas.height = canvas.clientHeight * devicePixelRatio;
+  const w = canvas.width, hgt = canvas.height;
+  view.s = Math.min(w / ((2 * R + 2) * SQ3), hgt / ((2 * R + 2) * 1.5)) * 0.98;
+  view.ox = w / 2; view.oy = hgt / 2;
+}
+window.addEventListener("resize", () => { layoutView(); render(); });
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) { layoutView(); render(); }
+});
+// if we loaded in a hidden/zero-sized tab, retry layout until the canvas has size
+(function ensureLaidOut() {
+  if (canvas.clientWidth === 0) return requestAnimationFrame(ensureLaidOut);
+  if (view.s === 0) { layoutView(); render(); }
+})();
+
+function hexPath(x, y, s) {
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = Math.PI / 180 * (60 * i - 30);
+    const px = x + s * Math.cos(a), py = y + s * Math.sin(a);
+    i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+  }
+  ctx.closePath();
+}
+
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const s = view.s;
+
+  for (const t of tiles.values()) {
+    const { x, y } = toPixel(t.q, t.r);
+    hexPath(x, y, s * 0.96);
+    ctx.fillStyle = TERRAIN_FILL[t.terrain];
+    ctx.fill();
+    ctx.strokeStyle = "#0d0b10";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    if (t.terrain === "forest") drawForest(x, y, s);
+    if (t.terrain === "mountain") drawMountain(x, y, s);
+    if (t.terrain === "water") drawWater(x, y, s);
+    if (t.camp) drawCamp(x, y, s, t.campOwner);
+    if (t.keep !== null) drawKeep(x, y, s, houseById(t.keep));
+    if (t.ruin) drawRuin(x, y, s);
+    if (t.spire) drawSpire(x, y, s);
+  }
+
+  // move / attack highlights
+  if (reachCache) {
+    for (const k of reachCache.moves.keys()) {
+      const [q, r] = k.split(",").map(Number);
+      const { x, y } = toPixel(q, r);
+      hexPath(x, y, s * 0.96);
+      ctx.fillStyle = "rgba(90, 150, 255, .22)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(120, 170, 255, .5)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    for (const id of reachCache.targets) {
+      const e = units.find(u => u.id === id);
+      if (!e) continue;
+      const { x, y } = toPixel(e.q, e.r);
+      ctx.beginPath();
+      ctx.arc(x, y, s * 0.75, 0, Math.PI * 2);
+      ctx.strokeStyle = "#ff5544";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+  }
+
+  for (const sh of shackled) drawShackle(sh);
+  for (const u of units) drawUnit(u);
+}
+
+function drawForest(x, y, s) {
+  ctx.fillStyle = "#2f4a3c";
+  for (const [dx, dy] of [[-0.3, 0.1], [0.25, -0.05], [0, 0.32]]) {
+    ctx.beginPath();
+    ctx.moveTo(x + dx * s, y + dy * s - s * 0.32);
+    ctx.lineTo(x + dx * s - s * 0.2, y + dy * s + s * 0.12);
+    ctx.lineTo(x + dx * s + s * 0.2, y + dy * s + s * 0.12);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+function drawMountain(x, y, s) {
+  ctx.fillStyle = "#4a4356";
+  ctx.beginPath();
+  ctx.moveTo(x - s * 0.45, y + s * 0.35);
+  ctx.lineTo(x - s * 0.1, y - s * 0.38);
+  ctx.lineTo(x + 0.18 * s, y + 0.05 * s);
+  ctx.lineTo(x + 0.32 * s, y - 0.18 * s);
+  ctx.lineTo(x + 0.55 * s, y + 0.35 * s);
+  ctx.closePath();
+  ctx.fill();
+}
+function drawWater(x, y, s) {
+  ctx.strokeStyle = "#3a5a80";
+  ctx.lineWidth = 1.5;
+  for (const dy of [-0.15, 0.15]) {
+    ctx.beginPath();
+    ctx.moveTo(x - s * 0.4, y + dy * s);
+    ctx.quadraticCurveTo(x - s * 0.15, y + (dy - 0.14) * s, x, y + dy * s);
+    ctx.quadraticCurveTo(x + s * 0.15, y + (dy + 0.14) * s, x + s * 0.4, y + dy * s);
+    ctx.stroke();
+  }
+}
+function drawCamp(x, y, s, owner) {
+  ctx.fillStyle = owner !== null ? houseById(owner)?.color ?? "#777" : "#6b6377";
+  ctx.beginPath();
+  ctx.moveTo(x, y - s * 0.34);
+  ctx.lineTo(x - s * 0.3, y + s * 0.26);
+  ctx.lineTo(x + s * 0.3, y + s * 0.26);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#0d0b10";
+  ctx.beginPath();
+  ctx.moveTo(x, y - s * 0.05);
+  ctx.lineTo(x - s * 0.1, y + s * 0.26);
+  ctx.lineTo(x + s * 0.1, y + s * 0.26);
+  ctx.closePath();
+  ctx.fill();
+}
+function drawKeep(x, y, s, h) {
+  ctx.fillStyle = h ? h.color : "#777";
+  ctx.fillRect(x - s * 0.32, y - s * 0.28, s * 0.64, s * 0.56);
+  ctx.fillRect(x - s * 0.42, y - s * 0.5, s * 0.2, s * 0.3);
+  ctx.fillRect(x + s * 0.22, y - s * 0.5, s * 0.2, s * 0.3);
+  ctx.fillStyle = "#0d0b10";
+  ctx.fillRect(x - s * 0.1, y - s * 0.02, s * 0.2, s * 0.3);
+}
+function drawRuin(x, y, s) {
+  ctx.strokeStyle = "#5a5264";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x - s * 0.3, y + s * 0.25); ctx.lineTo(x + s * 0.3, y - s * 0.25);
+  ctx.moveTo(x + s * 0.3, y + s * 0.25); ctx.lineTo(x - s * 0.3, y - s * 0.25);
+  ctx.stroke();
+}
+function drawSpire(x, y, s) {
+  const lit = spireUnlocked;
+  ctx.fillStyle = lit ? "#ffe9b0" : "#5d5870";
+  ctx.beginPath();
+  ctx.moveTo(x, y - s * 0.72);
+  ctx.lineTo(x - s * 0.22, y + s * 0.4);
+  ctx.lineTo(x + s * 0.22, y + s * 0.4);
+  ctx.closePath();
+  ctx.fill();
+  if (lit) {
+    ctx.strokeStyle = "rgba(255, 220, 140, .8)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, s * 0.85, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+function drawShackle(sh) {
+  const { x, y } = toPixel(sh.q, sh.r);
+  const s = view.s;
+  ctx.strokeStyle = "#9a93a8";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.arc(x - s * 0.14, y, s * 0.16, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x + s * 0.14, y, s * 0.16, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = "#9a93a8";
+  ctx.font = `${Math.round(s * 0.34)}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.fillText(TYPES[sh.type].glyph, x, y + s * 0.55);
+}
+function drawUnit(u) {
+  const { x, y } = toPixel(u.q, u.r);
+  const s = view.s;
+  const h = u.house === ARB ? { color: ARB_COLOR } : houseById(u.house);
+  const rad = s * 0.52;
+
+  if (selected === u.id) {
+    ctx.beginPath(); ctx.arc(x, y, rad + 5, 0, Math.PI * 2);
+    ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.5; ctx.stroke();
+  }
+  ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2);
+  ctx.fillStyle = h.color; ctx.fill();
+  ctx.strokeStyle = "#0d0b10"; ctx.lineWidth = 2; ctx.stroke();
+
+  ctx.fillStyle = u.house === ARB ? "#1a1f2c" : "#0d0b10";
+  ctx.font = `bold ${Math.round(s * 0.5)}px sans-serif`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(TYPES[u.type].glyph, x, y + 1);
+  ctx.textBaseline = "alphabetic";
+
+  // hp bar
+  const w = s * 1.0;
+  ctx.fillStyle = "#0d0b10";
+  ctx.fillRect(x - w / 2, y + rad + 3, w, 5);
+  ctx.fillStyle = u.hp / u.maxhp > 0.5 ? "#5fce7a" : u.hp / u.maxhp > 0.25 ? "#d9b45b" : "#e85555";
+  ctx.fillRect(x - w / 2, y + rad + 3, w * (u.hp / u.maxhp), 5);
+
+  // exhausted dim
+  if (u.house === 0 && u.moved && u.attacked && !busy) {
+    ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(13, 11, 16, .45)"; ctx.fill();
+  }
+}
+
+/* ---------------- panel / log ---------------- */
+
+function updatePanel() {
+  document.getElementById("s-turn").textContent = turn;
+  document.getElementById("s-supply").textContent = houses[0].supply;
+  document.getElementById("s-renown").textContent = renown;
+
+  const hDiv = document.getElementById("houses");
+  hDiv.innerHTML = "";
+  for (const h of houses) {
+    const row = document.createElement("div");
+    row.className = "hrow" + (h.alive ? "" : " dead");
+    row.innerHTML = `<span class="hdot" style="background:${h.color}"></span>` +
+      `<span>${h.name}</span><span class="motto">${h.player ? "" : h.motto}</span>`;
+    hDiv.appendChild(row);
+  }
+
+  const sel = selected ? units.find(u => u.id === selected) : null;
+  const si = document.getElementById("selinfo");
+  if (sel) {
+    const T = TYPES[sel.type];
+    si.innerHTML = `<b>${T.name}${sel.freed ? " (freed)" : ""}</b> — ` +
+      `HP ${sel.hp}/${sel.maxhp} · ATK ${T.atk} · RNG ${T.rng} · MOVE ${T.mv}<br>` +
+      `<span style="color:var(--dim)">${T.desc} ` +
+      `${sel.moved ? "" : "Can move. "}${sel.attacked ? "" : "Can attack."}</span>`;
+  } else si.textContent = "Select a unit.";
+
+  for (const type of ["blade", "archer", "warden"]) {
+    const T = TYPES[type];
+    const btn = document.getElementById("r-" + type);
+    btn.textContent = `${T.name} — ${T.cost} supply  (HP ${T.hp} · ATK ${T.atk} · RNG ${T.rng} · MV ${T.mv})`;
+    btn.disabled = gameOver || houses[0].supply < T.cost || !houses[0].alive;
+  }
+}
+
+function log(msg, cls) {
+  const el = document.getElementById("log");
+  const d = document.createElement("div");
+  if (cls) d.className = cls;
+  d.textContent = `T${turn ?? 1} — ${msg}`;
+  el.prepend(d);
+  while (el.children.length > 60) el.removeChild(el.lastChild);
+}
+
+/* ---------------- go ---------------- */
+
+newGame();

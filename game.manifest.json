@@ -3,10 +3,10 @@
   "title": "Cinderborn: The Conclave Trials",
   "description": "Turn-based hex strategy: a lowcaste imposter fights through a rigged trial of noble houses",
   "framework": "vite",
-  "category": "arcade",
-  "supportsMobile": true,
+  "category": "strategy",
+  "supportsMobile": false,
   "version": "0.1.0",
-  "emoji": "🔥",
+  "emoji": "\ud83d\udd25",
   "entry": "index.html",
   "buildCommand": "npm run build",
   "repo": "Brynrg/cinderborn"

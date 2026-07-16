@@ -56,6 +56,28 @@ body {
 .stat span { display: block; font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; }
 .stat b { font-size: 18px; color: var(--gold); }
 
+#suspwrap { padding: 2px 2px 0; }
+#suspwrap .boxtitle { margin-bottom: 3px; }
+#susp-num { color: var(--gold); }
+#suspbar {
+  height: 8px; background: #1d1826; border: 1px solid var(--edge); border-radius: 4px;
+  overflow: hidden;
+}
+#suspfill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, #6d5a2e, #d9b45b 55%, #e8642c 80%, #ff4433);
+  transition: width .25s;
+}
+.dim { color: var(--dim); font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+#powers button {
+  display: block; width: 100%; margin-bottom: 5px; padding: 7px 9px;
+  background: #2a1d24; color: var(--ink); border: 1px solid #4a2b38; border-radius: 5px;
+  font-size: 12px; text-align: left; cursor: pointer;
+}
+#powers button:hover:not(:disabled) { border-color: var(--ember2); }
+#powers button:disabled { opacity: .35; cursor: default; }
+
 #houses { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
 .hrow { display: flex; align-items: center; gap: 7px; padding: 2px 4px; }
 .hdot { width: 10px; height: 10px; border-radius: 50%; flex: none; }

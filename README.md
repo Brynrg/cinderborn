@@ -38,7 +38,17 @@ Every push to `main` auto-deploys to the portal.
   charging 3+ hexes.
 - Defeat houses by taking their keep. When 3 houses have fallen the central
   **Spire** unlocks (and its guard wakes). End a unit's move on the Spire to
-  win — as liberator or conqueror, depending on how you played.
+  win — as **liberator** (8+ freed), by **quiet coronation** (2+ living
+  vassals), or as **conqueror**.
+- **Envoys & pacts**: a cornered house may offer vassalage — tribute each turn,
+  and their blades never seek yours. Strike a vassal and the pact breaks
+  (+15 suspicion; they remember).
+- **Choice missives** arrive every few turns — shelter runaway Cinders or turn
+  them in, bluff an Arbiter's lineage test, tell your freed soldiers the truth.
+  Choices move supply, suspicion, renown, and units.
+- Units that make 2 kills become **veterans** (+1 ATK, +3 HP, gold chevron).
+- Three difficulties on the title screen (Ember / Trial / Pyre); the game
+  **autosaves** each turn — Continue resumes a run in progress. 🔊 toggles sound.
 
 ## Design & IP notes
 

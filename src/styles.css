@@ -131,3 +131,32 @@ body {
   border: none; border-radius: 6px; cursor: pointer;
 }
 .card button:hover { filter: brightness(1.15); }
+
+#diffrow { display: flex; gap: 8px; justify-content: center; margin-top: 14px; }
+#diffrow .diff {
+  margin-top: 0; padding: 8px 14px; font-size: 12px; letter-spacing: 2px;
+  background: #241d31; border: 1px solid var(--edge); color: var(--ink);
+}
+#diffrow .diff span {
+  display: block; font-size: 9px; letter-spacing: 1px; color: var(--dim);
+  font-weight: 400; text-transform: lowercase; margin-top: 2px;
+}
+#diffrow .diff.selected { border-color: var(--ember); box-shadow: 0 0 12px rgba(232, 100, 44, .35); }
+
+#continue { background: #241d31; border: 1px solid var(--gold); color: var(--gold); margin-left: 10px; }
+#continue.hidden { display: none; }
+
+#story-choices { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+#story-choices.hidden { display: none; }
+#story-choices button {
+  margin-top: 0; padding: 11px 18px; font-size: 13px; letter-spacing: 1px;
+  background: #241d31; border: 1px solid var(--edge); color: var(--ink); font-weight: 600;
+}
+#story-choices button:hover { border-color: var(--ember2); }
+#story-ok.hidden { display: none; }
+
+#mute {
+  float: right; background: none; border: 1px solid var(--edge); border-radius: 5px;
+  font-size: 13px; padding: 2px 7px; cursor: pointer; color: var(--ink);
+}
+#mute.muted { opacity: .4; }

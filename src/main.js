@@ -67,6 +67,14 @@ const POWERS = {
     desc: "act again", needs: u => u.moved || u.attacked },
 };
 
+const DIFFS = {
+  ember: { label: "Ember", startBonus: 6, suspDecay: 5, enforcerAtk: 3, aiIncome: 0 },
+  trial: { label: "Trial", startBonus: 0, suspDecay: 3, enforcerAtk: 4, aiIncome: 0 },
+  pyre:  { label: "Pyre",  startBonus: 0, suspDecay: 2, enforcerAtk: 5, aiIncome: 1 },
+};
+
+const SAVE_KEY = "cinderborn-save-v3";
+
 const DIRS = [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
 
 /* ---------------- state ---------------- */
@@ -75,8 +83,11 @@ let tiles, units, shackled, houses, turn, renown, defeated, playerFalls, selecte
 let spireUnlocked, arbStage, uidSeq, gameOver, busy;
 let susp, probed, exposedTurns, powerUsed, freedCount;
 let firstBlood, firstFree;
+let pacts, brokenPacts, offeredPacts, usedEvents, avatarBusyNext;
+let diffKey = "trial";
 let reachCache = null; // {unitId, moves:Map(key->cost), targets:Set(unitId)}
 let storyQueue = [];
+const diff = () => DIFFS[diffKey];
 
 const canvas = document.getElementById("board");
 const ctx = canvas.getContext("2d");
@@ -167,11 +178,14 @@ function generateMap() {
 function newGame() {
   generateMap();
   houses = HOUSE_DEFS.map(h => ({ ...h, alive: true, supply: 10 }));
+  houses[0].supply += diff().startBonus;
   units = []; shackled = []; uidSeq = 1;
   turn = 1; renown = 0; defeated = 0; playerFalls = 0; selected = null;
   spireUnlocked = false; arbStage = 0; gameOver = false; busy = false;
   susp = 0; probed = false; exposedTurns = 0; powerUsed = false; freedCount = 0;
   firstBlood = false; firstFree = false;
+  pacts = new Set(); brokenPacts = new Set(); offeredPacts = new Set();
+  usedEvents = new Set(); avatarBusyNext = false;
   reachCache = null; storyQueue = [];
 
   for (const h of houses) {
@@ -209,9 +223,10 @@ function spawnUnit(house, type, q, r, champ) {
   const u = {
     id: uidSeq++, house, type, q, r,
     hp: src.hp, maxhp: src.hp, atk: src.atk, rng: src.rng, mv: src.mv,
-    champ: champ || null, tempAtk: 0, movedDist: 0,
+    champ: champ || null, tempAtk: 0, movedDist: 0, kills: 0, vet: false,
     moved: true, attacked: true, freed: false,
   };
+  if (type === "enforcer") u.atk = diff().enforcerAtk;
   units.push(u);
   return u;
 }
@@ -271,6 +286,7 @@ function computeReach(u) {
 function doMove(u, q, r, dist) {
   u.movedDist = dist ?? hexDist(u, { q, r });
   u.q = q; u.r = r; u.moved = true;
+  if (u.house === 0) sfx("move");
   const t = tileAt(q, r);
 
   // liberate a shackled captive
@@ -285,6 +301,7 @@ function doMove(u, q, r, dist) {
       nu.freed = true;
       freedCount++;
       renown += sh.champ ? 3 : 1;
+      sfx("liberate");
       if (sh.champ) {
         story("A CHAMPION UNCHAINED", sh.champ.name,
           `"${sh.champ.cry}" — the words ring different, spoken for you. A champion of the highborn kneels to a Cinder, and means it.`);
@@ -322,9 +339,21 @@ function doMove(u, q, r, dist) {
 
 function doAttack(u, e) {
   u.attacked = true; u.moved = true; // attacking ends the unit's activation
+  if (u.house === 0 && pacts.has(e.house)) breakPact(e.house);
+  sfx("strike");
   strike(u, e);
   if (e.hp > 0 && hexDist(u, e) <= e.rng) strike(e, u, true);
   afterAction();
+}
+
+function breakPact(houseId) {
+  pacts.delete(houseId);
+  brokenPacts.add(houseId);
+  addSusp(15);
+  const h = houseById(houseId);
+  story("OATH BROKEN", h.name,
+    `You swore, and you struck anyway. ${h.name} will not kneel twice — and the Arbiters make note of nobles who lie. +15 suspicion.`);
+  log(`Pact with ${h.name} broken. They remember.`, "hot");
 }
 
 function strike(a, d, isCounter) {
@@ -351,6 +380,13 @@ function kill(killer, dead) {
     units = units.filter(u => u.hp > 0);
     return lose("Your form crumbles into cold dust. The light fades, and with it, your stolen legacy.");
   }
+  killer.kills = (killer.kills || 0) + 1;
+  if (killer.kills >= 2 && !killer.vet) {
+    killer.vet = true;
+    killer.atk += 1; killer.maxhp += 3; killer.hp += 3;
+    if (killer.house === 0) log(`${unitName(killer)} is hardened by the trial. +1 ATK, +3 HP.`, "gold");
+  }
+  sfx("kill");
   if (!firstBlood && killer.house === 0) {
     firstBlood = true;
     story("MISSIVE", "First Blood",
@@ -377,12 +413,14 @@ function cheapestCost() { return TYPES.blade.cost; }
 function captureKeep(u, t) {
   const h = houseById(t.keep);
   if (!h || !h.alive) { t.keep = null; t.keepRuin = true; return; }
+  if (u.house === 0 && pacts.has(h.id)) breakPact(h.id);
   fellHouse(h, u.house);
   t.keep = null; t.keepRuin = true;
 }
 
 function fellHouse(h, byHouse) {
   h.alive = false;
+  pacts.delete(h.id);
   defeated++;
   if (byHouse === 0) playerFalls++;
   for (const u of units)
@@ -492,14 +530,40 @@ function healPhase(houseId) {
         ally.hp = Math.min(ally.maxhp, ally.hp + 3);
 }
 
-// while the player's cover holds, no house dares strike the "noble" Ash
-function houseTargets(list) {
-  if (exposedTurns > 0 || turn >= 10) return list;
-  return list.filter(e => e.type !== "avatar");
+// while the player's cover holds, no house dares strike the "noble" Ash;
+// vassal houses never strike the player at all
+function houseTargets(list, h) {
+  let out = list;
+  if (h && pacts.has(h.id)) out = out.filter(e => e.house !== 0);
+  if (!(exposedTurns > 0 || turn >= 10)) out = out.filter(e => e.type !== "avatar");
+  return out;
+}
+
+// a cornered house may sue for peace — once, and only to a player it hasn't fought a pact over
+function maybeOfferPact(h) {
+  if (turn < 6 || pacts.has(h.id) || brokenPacts.has(h.id) || offeredPacts.has(h.id)) return;
+  const keepT = [...tiles.values()].find(t => t.keep === h.id);
+  const weak = units.filter(u => u.house === h.id).length <= 2;
+  const threatened = keepT &&
+    units.some(e => e.house !== h.id && e.house !== ARB && e.hp > 0 && hexDist(e, keepT) <= 2);
+  if (!weak && !threatened) return;
+  offeredPacts.add(h.id);
+  storyChoice("AN ENVOY ARRIVES", h.name,
+    `An envoy in ${h.name}'s colors kneels before you, eyes down. "My house is bleeding, scion. Accept our fealty: three supply each turn, and no blade of ours will ever seek yours." A pact, from the highborn, to you.`,
+    [
+      { label: "Accept their fealty (+3 supply/turn, they spare you)", apply: () => {
+          pacts.add(h.id);
+          log(`${h.name} kneels. Tribute flows.`, "gold");
+        } },
+      { label: "Send the envoy home (no pact)", apply: () => {
+          log(`${h.name}'s envoy leaves empty-handed.`);
+        } },
+    ]);
 }
 
 function aiHouseTurn(h) {
   healPhase(h.id);
+  maybeOfferPact(h);
   const keepT = [...tiles.values()].find(t => t.keep === h.id);
   const myUnits = () => units.filter(u => u.house === h.id);
   if (keepT) {
@@ -533,7 +597,7 @@ function aiHouseTurn(h) {
       const intruder = units.some(e => e.house !== h.id && e.hp > 0 && hexDist(e, keepT) <= 3);
       if (!intruder) {
         if (hexDist(u, keepT) > 1) stepToward(u, keepT);
-        const near = houseTargets(attackableFrom(u));
+        const near = houseTargets(attackableFrom(u), h);
         if (near.length) doAttackAI(u, near.sort((a, b) => a.hp - b.hp)[0]);
         u.moved = true; u.attacked = true;
         continue;
@@ -548,7 +612,7 @@ function aiHouseTurn(h) {
       continue;
     }
 
-    let targets = houseTargets(attackableFrom(u));
+    let targets = houseTargets(attackableFrom(u), h);
     if (targets.length) {
       targets.sort((a, b) => a.hp - b.hp);
       doAttackAI(u, targets[0]);
@@ -569,7 +633,7 @@ function aiHouseTurn(h) {
       if (t.camp && t.campOwner !== h.id) t.campOwner = h.id;
       if (t.keep !== null && t.keep !== h.id) captureKeep(u, t);
       if (gameOver) return;
-      targets = houseTargets(attackableFrom(u));
+      targets = houseTargets(attackableFrom(u), h);
       if (targets.length) {
         targets.sort((a, b) => a.hp - b.hp);
         doAttackAI(u, targets[0]);
@@ -601,8 +665,10 @@ function doAttackAI(u, e) {
 function pickGoal(u, h) {
   const goals = [];
   const exposed = exposedTurns > 0;
+  const sworn = pacts.has(h.id); // vassals leave the player alone entirely
   for (const e of units)
     if (e.house !== h.id && e.hp > 0) {
+      if (e.house === 0 && sworn) continue;
       // while your cover holds, no house marches on a noble scion
       if (e.type === "avatar" && !exposed && turn < 10) continue;
       let w = 1;
@@ -612,9 +678,10 @@ function pickGoal(u, h) {
     }
   const earlyGame = turn < 8 ? 2.2 : 1; // expand before conquering
   for (const t of tiles.values()) {
-    if (t.keep !== null && t.keep !== h.id && houseById(t.keep)?.alive)
+    if (t.keep !== null && t.keep !== h.id && houseById(t.keep)?.alive &&
+        !(sworn && t.keep === 0))
       goals.push({ q: t.q, r: t.r, w: (h.persona === "aggressive" ? 0.8 : 1.2) * earlyGame });
-    if (t.camp && t.campOwner !== h.id)
+    if (t.camp && t.campOwner !== h.id && !(sworn && t.campOwner === 0))
       goals.push({ q: t.q, r: t.r, w: h.persona === "expansionist" ? 0.5 : 1.0 });
     if (t.terrain === "ruins" && !t.looted)
       goals.push({ q: t.q, r: t.r, w: 0.9 });
@@ -665,10 +732,18 @@ function endTurn() {
         if (!h.alive) continue;
         let camps = 0;
         for (const t of tiles.values()) if (t.campOwner === h.id) camps++;
-        h.supply += 3 + camps * 2;
+        h.supply += 3 + camps * 2 + (h.player ? 0 : diff().aiIncome);
+      }
+      // vassal tribute
+      for (const id of pacts) {
+        const v = houseById(id);
+        if (!v?.alive) continue;
+        const pay = Math.min(3, v.supply);
+        v.supply -= pay;
+        houses[0].supply += pay;
       }
       turn++;
-      susp = Math.max(0, susp - 3);
+      susp = Math.max(0, susp - diff().suspDecay);
       if (susp < 50) probed = false;
       if (exposedTurns > 0) exposedTurns--;
       powerUsed = false;
@@ -678,7 +753,14 @@ function endTurn() {
       for (const u of units) if (u.house === 0) {
         u.moved = false; u.attacked = false; u.tempAtk = 0; u.movedDist = 0;
       }
+      if (avatarBusyNext && avatar) {
+        avatarBusyNext = false;
+        avatar.moved = true; avatar.attacked = true;
+        log("Ash spends the day at court, playing the noble.");
+      }
+      maybeFireEvent();
       checkPlayerAlive();
+      saveGame();
     }
     busy = false;
     document.getElementById("endturn").disabled = false;
@@ -697,20 +779,28 @@ function checkPlayerAlive() {
 function win() {
   if (gameOver) return;
   gameOver = true;
+  saveGame(); // clears the save
+  sfx("win");
   log("You stand alone in the blinding truth.", "gold");
-  const liberator = freedCount >= 8;
-  showEnd(
-    liberator ? "DAWN OVER VAEL" : "THE SPIRE IS YOURS",
-    liberator
-      ? `You shattered the chains and freed the shackled — ${freedCount} souls marched beside you at the end. Vael rises from the ashes, not as a prison, but as a beacon. Turn ${turn}, renown ${renown}. The trial is over; the dawn has only begun.`
-      : `You crushed every banner beneath your heel and climbed the Spire alone. Vael kneels — not out of love, but out of sheer, terrifying necessity. Turn ${turn}, renown ${renown}. A Cinder sits the judges' seat. What burns next is up to you.`,
-  );
+  const vassals = [...pacts].filter(id => houseById(id)?.alive).length;
+  if (freedCount >= 8) {
+    showEnd("DAWN OVER VAEL",
+      `You shattered the chains and freed the shackled — ${freedCount} souls marched beside you at the end. Vael rises from the ashes, not as a prison, but as a beacon. Turn ${turn}, renown ${renown}. The trial is over; the dawn has only begun.`);
+  } else if (vassals >= 2) {
+    showEnd("THE QUIET CORONATION",
+      `No final slaughter, no burning sky — just ${vassals} great houses kneeling by treaty to a Cinder they believe is one of their own. You climbed the Spire on a staircase of signatures. Turn ${turn}, renown ${renown}. Now comes the harder game: ruling the people who made you.`);
+  } else {
+    showEnd("THE SPIRE IS YOURS",
+      `You crushed every banner beneath your heel and climbed the Spire alone. Vael kneels — not out of love, but out of sheer, terrifying necessity. Turn ${turn}, renown ${renown}. A Cinder sits the judges' seat. What burns next is up to you.`);
+  }
 }
 
 function lose(text) {
   if (gameOver) return;
   gameOver = true;
   houses[0].alive = false;
+  saveGame(); // clears the save
+  sfx("lose");
   showEnd("THE TRIAL CONSUMES YOU", text);
 }
 
@@ -720,15 +810,173 @@ function showEnd(title, text) {
   document.getElementById("end").classList.remove("hidden");
 }
 
+/* ---------------- choice events ---------------- */
+
+const EVENTS = [
+  {
+    id: "workgang",
+    cond: () => true,
+    kicker: "IN THE NIGHT", title: "The Work-Gang",
+    text: "A gang of Cinder laborers is caught tunneling beneath your camp — runaways from the under-forges, half-starved, all eyes on you. Your officers await an order.",
+    choices: [
+      { label: "Shelter them (+1 Blade, +10 suspicion)", apply: () => {
+          const keepT = [...tiles.values()].find(t => t.keep === 0);
+          const spots = keepT ? freeNeighbors(keepT.q, keepT.r) : [];
+          if (spots.length) spawnUnit(0, "blade", ...spots[0]);
+          addSusp(10);
+          log("The runaways take up arms under your banner.", "gold");
+        } },
+      { label: "Turn them over (−15 suspicion, −2 renown)", apply: () => {
+          susp = Math.max(0, susp - 15);
+          renown = Math.max(0, renown - 2);
+          log("The Arbiters commend your vigilance. The Cinders remember it differently.", "hot");
+        } },
+    ],
+  },
+  {
+    id: "banquet",
+    cond: () => units.some(u => u.type === "avatar"),
+    kicker: "AN INVITATION", title: "A Lumen Banquet",
+    text: "Gilt-edged card, radiant seal: the surviving houses dine tonight, and your absence would be noticed. A night of wine and lies — or a night of war.",
+    choices: [
+      { label: "Attend (−12 suspicion, Ash loses next turn)", apply: () => {
+          susp = Math.max(0, susp - 12);
+          avatarBusyNext = true;
+          log("You smile, toast, and lie beautifully.");
+        } },
+      { label: "Send regrets (+5 suspicion)", apply: () => {
+          addSusp(5);
+          log("An empty chair says more than you hoped.");
+        } },
+    ],
+  },
+  {
+    id: "ledger",
+    cond: () => true,
+    kicker: "A QUIET OFFER", title: "The Quartermaster's Ledger",
+    text: "A Lumen quartermaster with gambling debts offers you crates of 'misplaced' steel — no questions, no records. Probably.",
+    choices: [
+      { label: "Buy the steel (+8 supply, +8 suspicion)", apply: () => {
+          houses[0].supply += 8; addSusp(8);
+          log("The crates arrive under moonlight.");
+        } },
+      { label: "Report him (+2 renown)", apply: () => {
+          renown += 2;
+          log("The quartermaster is dragged away praising your honor.");
+        } },
+    ],
+  },
+  {
+    id: "whispers",
+    cond: () => units.some(u => u.house === 0 && u.freed),
+    kicker: "AROUND THE FIRE", title: "Whispers in the Ranks",
+    text: "The soldiers you freed talk when they think you cannot hear. They say your accent slips. They say you fight like a miner, not a scion. Tonight, one of them asks you outright.",
+    choices: [
+      { label: "Tell them the truth (+15 suspicion, freed units +1 ATK)", apply: () => {
+          addSusp(15);
+          for (const u of units) if (u.house === 0 && u.freed) u.atk += 1;
+          log("Silence. Then, one by one, they kneel — to a Cinder.", "gold");
+        } },
+      { label: "Lie to them (one freed soldier deserts)", apply: () => {
+          const f = units.find(u => u.house === 0 && u.freed && u.type !== "avatar");
+          if (f) { f.hp = 0; units = units.filter(x => x.hp > 0); }
+          log("The one who asked is gone by morning.", "hot");
+        } },
+    ],
+  },
+  {
+    id: "lineage",
+    cond: () => true,
+    kicker: "A COLD INTERVIEW", title: "The Arbiter's Question",
+    text: "An Arbiter reads your forged lineage aloud, slowly, watching your face. 'Your grandmother's estate — the one by the glass cliffs. Describe the view.' There was no estate. There are no cliffs.",
+    choices: [
+      { label: "Bribe the clerk (−6 supply, −10 suspicion)", apply: () => {
+          houses[0].supply = Math.max(0, houses[0].supply - 6);
+          susp = Math.max(0, susp - 10);
+          log("The ledger acquires a new page, and you a new grandmother.");
+        } },
+      { label: "Bluff (coin flip: −8 or +15 suspicion)", apply: () => {
+          if (rnd(2) === 0) { susp = Math.max(0, susp - 8); log("You describe cliffs you have never seen. The Arbiter nods, satisfied.", "gold"); }
+          else { addSusp(15); log("A pause, one heartbeat too long. The Arbiter writes something down.", "hot"); }
+        } },
+    ],
+  },
+  {
+    id: "emberkin",
+    cond: () => true,
+    kicker: "A SIGN IN SOOT", title: "The Emberkin",
+    text: "A soot-mark on your tent flap — the sign of the Emberkin, the hidden hands who carved you into a noble. They ask for grain and steel for the under-city. They do not ask twice.",
+    choices: [
+      { label: "Send supplies (−5 supply, +3 renown)", apply: () => {
+          houses[0].supply = Math.max(0, houses[0].supply - 5);
+          renown += 3;
+          log("The mark is gone by dawn. Somewhere below, someone eats.", "gold");
+        } },
+      { label: "Ignore the sign", apply: () => {
+          log("You scrub the soot away yourself, before anyone sees.");
+        } },
+    ],
+  },
+  {
+    id: "duel",
+    cond: () => units.some(u => u.type === "avatar"),
+    kicker: "BEFORE THE HOUSES", title: "A Champion's Regard",
+    text: "A rival champion halts the day's skirmish to salute you across the field — then offers a formal duel of honor, blades blunted, pride sharp. The houses are watching.",
+    choices: [
+      { label: "Accept the duel (Ash +2 ATK, +5 suspicion)", apply: () => {
+          const av = units.find(u => u.type === "avatar");
+          if (av) av.atk += 2;
+          addSusp(5);
+          log("You win ugly — pit-fighting, not fencing. They cheer anyway.", "gold");
+        } },
+      { label: "Decline with grace (−5 suspicion)", apply: () => {
+          susp = Math.max(0, susp - 5);
+          log("A perfect courtly bow. Your fencing master would have wept — if you'd ever had one.");
+        } },
+    ],
+  },
+  {
+    id: "grainfire",
+    cond: () => true,
+    kicker: "SMOKE AT DAWN", title: "Grain Fire",
+    text: "Fire in the supply tents — accident, or a rival's coin at work. Your soldiers can save the grain, but not for free.",
+    choices: [
+      { label: "Fight the fire (a random unit starts next turn spent)", apply: () => {
+          const pool = units.filter(u => u.house === 0 && u.type !== "avatar");
+          if (pool.length) { const u = pool[rnd(pool.length)]; u.moved = true; u.attacked = true; log(`${unitName(u)} spends the night hauling water.`); }
+        } },
+      { label: "Let it burn (−4 supply)", apply: () => {
+          houses[0].supply = Math.max(0, houses[0].supply - 4);
+          log("You watch it burn and think of the under-forges.");
+        } },
+    ],
+  },
+];
+
+function maybeFireEvent() {
+  if (gameOver || turn < 4 || turn % 4 !== 0) return;
+  const pool = EVENTS.filter(e => !usedEvents.has(e.id) && e.cond());
+  if (!pool.length) return;
+  const e = pool[rnd(pool.length)];
+  usedEvents.add(e.id);
+  storyChoice(e.kicker, e.title, e.text, e.choices);
+}
+
 /* ---------------- story missives ---------------- */
 
 function story(kicker, title, text) {
   storyQueue.push({ kicker, title, text });
 }
 
+function storyChoice(kicker, title, text, choices) {
+  storyQueue.push({ kicker, title, text, choices });
+}
+
 function storyOpen() {
   return !document.getElementById("story").classList.contains("hidden");
 }
+
+let pendingChoices = null;
 
 function showNextStory() {
   if (gameOver || storyOpen() || !storyQueue.length) return;
@@ -736,13 +984,38 @@ function showNextStory() {
   document.getElementById("story-kicker").textContent = s.kicker;
   document.getElementById("story-title").textContent = s.title;
   document.getElementById("story-text").textContent = s.text;
+  const okBtn = document.getElementById("story-ok");
+  const chDiv = document.getElementById("story-choices");
+  if (s.choices) {
+    pendingChoices = s.choices;
+    okBtn.classList.add("hidden");
+    chDiv.classList.remove("hidden");
+    document.getElementById("choice-a").textContent = s.choices[0].label;
+    document.getElementById("choice-b").textContent = s.choices[1].label;
+  } else {
+    pendingChoices = null;
+    okBtn.classList.remove("hidden");
+    chDiv.classList.add("hidden");
+  }
+  sfx("story");
   document.getElementById("story").classList.remove("hidden");
+}
+
+function resolveChoice(i) {
+  const c = pendingChoices?.[i];
+  pendingChoices = null;
+  document.getElementById("story").classList.add("hidden");
+  if (c) c.apply();
+  render(); updatePanel();
+  showNextStory();
 }
 
 document.getElementById("story-ok").addEventListener("click", () => {
   document.getElementById("story").classList.add("hidden");
   showNextStory();
 });
+document.getElementById("choice-a").addEventListener("click", () => resolveChoice(0));
+document.getElementById("choice-b").addEventListener("click", () => resolveChoice(1));
 
 function afterAction() {
   if (selected) {
@@ -751,6 +1024,92 @@ function afterAction() {
     else computeReach(u);
   }
   render(); updatePanel(); showNextStory();
+}
+
+/* ---------------- sound (tiny synth, no assets) ---------------- */
+
+let audioCtx = null;
+let muted = localStorage.getItem("cinderborn-muted") === "1";
+
+function tone(freq, dur, type = "square", vol = 0.05, delay = 0) {
+  if (muted) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    const t0 = audioCtx.currentTime + delay;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(t0); o.stop(t0 + dur);
+  } catch { /* audio unavailable — play silent */ }
+}
+
+function sfx(kind) {
+  if (kind === "select")   tone(520, 0.06, "sine", 0.04);
+  if (kind === "move")     tone(300, 0.08, "sine", 0.04);
+  if (kind === "strike") { tone(180, 0.1, "square", 0.05); tone(140, 0.12, "square", 0.04, 0.04); }
+  if (kind === "kill")     tone(90, 0.25, "sawtooth", 0.06);
+  if (kind === "liberate"){ tone(440, 0.1, "sine", 0.05); tone(660, 0.12, "sine", 0.05, 0.09); }
+  if (kind === "story")    tone(700, 0.15, "sine", 0.035);
+  if (kind === "win")    { tone(440, 0.2, "sine", 0.06); tone(550, 0.2, "sine", 0.06, 0.15); tone(660, 0.35, "sine", 0.06, 0.3); }
+  if (kind === "lose")   { tone(220, 0.3, "sawtooth", 0.05); tone(160, 0.5, "sawtooth", 0.05, 0.25); }
+}
+
+const muteBtn = document.getElementById("mute");
+function paintMute() {
+  muteBtn.textContent = muted ? "🔇" : "🔊";
+  muteBtn.classList.toggle("muted", muted);
+}
+muteBtn.addEventListener("click", () => {
+  muted = !muted;
+  localStorage.setItem("cinderborn-muted", muted ? "1" : "0");
+  paintMute();
+});
+paintMute();
+
+/* ---------------- save / load ---------------- */
+
+function saveGame() {
+  if (gameOver) { localStorage.removeItem(SAVE_KEY); return; }
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      v: 3, diffKey, turn, renown, defeated, playerFalls, spireUnlocked, arbStage,
+      uidSeq, susp, probed, exposedTurns, freedCount, firstBlood, firstFree,
+      avatarBusyNext,
+      pacts: [...pacts], brokenPacts: [...brokenPacts],
+      offeredPacts: [...offeredPacts], usedEvents: [...usedEvents],
+      houses, units, shackled, tiles: [...tiles.values()],
+    }));
+  } catch { /* storage full/blocked — play on without saves */ }
+}
+
+function hasSave() {
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY))?.v === 3; }
+  catch { return false; }
+}
+
+function loadGame() {
+  let s;
+  try { s = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch { return false; }
+  if (!s || s.v !== 3) return false;
+  diffKey = s.diffKey;
+  turn = s.turn; renown = s.renown; defeated = s.defeated; playerFalls = s.playerFalls;
+  spireUnlocked = s.spireUnlocked; arbStage = s.arbStage; uidSeq = s.uidSeq;
+  susp = s.susp; probed = s.probed; exposedTurns = s.exposedTurns;
+  freedCount = s.freedCount; firstBlood = s.firstBlood; firstFree = s.firstFree;
+  avatarBusyNext = s.avatarBusyNext;
+  pacts = new Set(s.pacts); brokenPacts = new Set(s.brokenPacts);
+  offeredPacts = new Set(s.offeredPacts); usedEvents = new Set(s.usedEvents);
+  houses = s.houses; units = s.units; shackled = s.shackled;
+  tiles = new Map(s.tiles.map(t => [key(t.q, t.r), t]));
+  selected = null; reachCache = null; storyQueue = []; pendingChoices = null;
+  gameOver = false; busy = false; powerUsed = false;
+  layoutView(); render(); updatePanel();
+  log("You take the field again where you left it.");
+  return true;
 }
 
 /* ---------------- input ---------------- */
@@ -778,6 +1137,7 @@ canvas.addEventListener("click", ev => {
   if (clickedUnit && clickedUnit.house === 0) {
     selected = clickedUnit.id;
     computeReach(clickedUnit);
+    sfx("select");
   } else {
     selected = null; reachCache = null;
   }
@@ -796,7 +1156,8 @@ function cycleUnit() {
 
 window.addEventListener("keydown", ev => {
   if (storyOpen()) {
-    if (ev.key === "Enter" || ev.key === " ") document.getElementById("story-ok").click();
+    if (!pendingChoices && (ev.key === "Enter" || ev.key === " "))
+      document.getElementById("story-ok").click();
     return;
   }
   if (ev.key === "e" || ev.key === "E") endTurn();
@@ -805,9 +1166,30 @@ window.addEventListener("keydown", ev => {
 });
 
 document.getElementById("endturn").addEventListener("click", endTurn);
+
+for (const btn of document.querySelectorAll("#diffrow .diff")) {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#diffrow .diff").forEach(b => b.classList.remove("selected"));
+    btn.classList.add("selected");
+    diffKey = btn.dataset.diff;
+    sfx("select");
+  });
+}
+
 document.getElementById("begin").addEventListener("click", () => {
   document.getElementById("title").classList.add("hidden");
+  document.getElementById("log").innerHTML = "";
+  newGame();  // start fresh on the chosen difficulty
+  sfx("story");
 });
+document.getElementById("continue").addEventListener("click", () => {
+  if (loadGame()) {
+    document.getElementById("title").classList.add("hidden");
+    sfx("story");
+  }
+});
+if (hasSave()) document.getElementById("continue").classList.remove("hidden");
+
 document.getElementById("again").addEventListener("click", () => {
   document.getElementById("end").classList.add("hidden");
   document.getElementById("log").innerHTML = "";
@@ -1064,6 +1446,17 @@ function drawUnit(u) {
   ctx.fillStyle = u.hp / u.maxhp > 0.5 ? "#5fce7a" : u.hp / u.maxhp > 0.25 ? "#d9b45b" : "#e85555";
   ctx.fillRect(x - w / 2, y + rad + 3, w * (u.hp / u.maxhp), 5);
 
+  // veteran chevron
+  if (u.vet) {
+    ctx.strokeStyle = "#ffe9b0";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - 5, y + rad + 12);
+    ctx.lineTo(x, y + rad + 8);
+    ctx.lineTo(x + 5, y + rad + 12);
+    ctx.stroke();
+  }
+
   if (u.house === 0 && u.moved && u.attacked && !busy) {
     ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(13, 11, 16, .45)"; ctx.fill();
@@ -1085,8 +1478,10 @@ function updatePanel() {
   for (const h of houses) {
     const row = document.createElement("div");
     row.className = "hrow" + (h.alive ? "" : " dead");
+    const tag = pacts.has(h.id) ? " · <span style='color:var(--gold)'>vassal</span>"
+              : brokenPacts.has(h.id) && h.alive ? " · <span style='color:#e85555'>betrayed</span>" : "";
     row.innerHTML = `<span class="hdot" style="background:${h.color}"></span>` +
-      `<span>${h.name}</span><span class="motto">${h.player ? "" : h.motto}</span>`;
+      `<span>${h.name}${tag}</span><span class="motto">${h.player ? "" : h.motto}</span>`;
     hDiv.appendChild(row);
   }
 
@@ -1095,7 +1490,7 @@ function updatePanel() {
   if (sel) {
     const extra = sel.champ?.lifesteal ? " Heals on kill." :
                   sel.champ?.duelist ? " Brutal counterattacks." : "";
-    si.innerHTML = `<b>${unitName(sel)}${sel.freed ? " (freed)" : ""}</b> — ` +
+    si.innerHTML = `<b>${unitName(sel)}${sel.freed ? " (freed)" : ""}${sel.vet ? " ⌃ veteran" : ""}</b> — ` +
       `HP ${sel.hp}/${sel.maxhp} · ATK ${sel.atk}${sel.tempAtk ? "+" + sel.tempAtk : ""} · RNG ${sel.rng} · MOVE ${sel.mv}<br>` +
       `<span style="color:var(--dim)">${sel.champ ? `"${sel.champ.cry}"${extra}` : TYPES[sel.type].desc} ` +
       `${sel.moved ? "" : "Can move. "}${sel.attacked ? "" : "Can attack."}</span>`;
@@ -1152,6 +1547,14 @@ window.__cb = {
   get exposedTurns() { return exposedTurns; },
   get gameOver() { return gameOver; },
   get storyQueue() { return storyQueue; }, set storyQueue(v) { storyQueue = v; },
+  get pacts() { return pacts; },
+  get brokenPacts() { return brokenPacts; },
+  get usedEvents() { return usedEvents; }, set usedEvents(v) { usedEvents = v; },
+  get diffKey() { return diffKey; }, set diffKey(v) { diffKey = v; },
+  get pendingChoices() { return pendingChoices; },
+  EVENTS,
   endTurn, doMove, doAttack, reachable, freeNeighbors, unitAt, tileAt,
   addSusp, usePower, spawnUnit, arbiterCheck, computeReach, newGame,
+  maybeOfferPact, maybeFireEvent, storyChoice, resolveChoice, breakPact,
+  saveGame, loadGame, hasSave,
 };

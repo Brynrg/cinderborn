@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "typecheck": "node --check src/main.js",
     "lint:paths": "node scripts/check-relative-paths.mjs",
     "test": "playwright test",
     "deploy:portal": "npm run build && node scripts/deploy-portal.mjs"

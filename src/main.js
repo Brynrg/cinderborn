@@ -47,16 +47,47 @@ const FALL_MISSIVES = {
   5: "The light consumes all, even those who wield it. You were merely fuel for our ascension.",
 };
 
+/* ---- heraldry: The Attainted Roll ----
+   Petra Sancta hatching stands in for color. Six canonical tinctures, each a
+   flat pigment paired with the one true hatch pattern that identifies it —
+   this IS the fog-of-war/claim system, not decoration bolted on top. Ash
+   (the player) is Sable, outside the six, with a bend-sinister charge baked
+   in from turn one. One reserved alarm tone exists ONLY for the momentary
+   exposure flash — it never appears as ambient chrome or a house color. */
+const INK = "#2a1e16";
+const VELLUM = "#e9dfc7";
+const ALARM = "#b23a1f"; // reserved: exposure-flash VFX only.
+
+// the "metal" flag mirrors heraldry's real rule of tincture: a metal (Or,
+// Argent — pale) field takes an ink charge; a colour (dark) field takes a
+// vellum charge. Ash's Sable and the fog-hatch background both key off this
+// same rule so the charge is never lost against its own field.
+const TINCTURE = {
+  gules:   { color: "#a83226", hatch: "vertical",   metal: false },
+  azure:   { color: "#2c4f7c", hatch: "horizontal", metal: false },
+  vert:    { color: "#3f6b4f", hatch: "diagonal",   metal: false },
+  or:      { color: "#c99a2e", hatch: "dots",       metal: true  },
+  purpure: { color: "#5b3a63", hatch: "crosshatch", metal: false },
+  argent:  { color: "#c9c3b0", hatch: "blank",      metal: true  },
+  sable:   { color: "#1c1712", hatch: "crosshatch", metal: false },
+};
+
+// each type's heraldic charge (silhouette-first, six distinct shapes)
+const CHARGE = {
+  blade: "lion", archer: "eagle", warden: "tower", lancer: "horse",
+  herald: "dove", enforcer: "serpent", avatar: "lion",
+};
+
 const HOUSE_DEFS = [
-  { id: 0, name: "You — the Cinder",  motto: "Wearing stolen light.",                    color: "#e8642c", player: true,  keep: [0, 7] },
-  { id: 1, name: "House Vorthos", motto: "Iron wills temper the soul.",             color: "#4f8fd4", keep: [7, 0],  persona: "aggressive" },
-  { id: 2, name: "House Kaelen",  motto: "Shadows dance where light dares not.",    color: "#8a5fd6", keep: [7, -7], persona: "expansionist" },
-  { id: 3, name: "House Mirex",   motto: "Silence is the sharpest blade.",          color: "#3fb58a", keep: [0, -7], persona: "defensive" },
-  { id: 4, name: "House Oryn",    motto: "Blood binds tighter than golden chains.", color: "#c94f6d", keep: [-7, 0], persona: "aggressive" },
-  { id: 5, name: "House Syla",    motto: "Grace is the mask of a hungry heart.",    color: "#d4a53f", keep: [-7, 7], persona: "expansionist" },
+  { id: 0, name: "You — the Cinder",  motto: "Wearing stolen light.",                    color: TINCTURE.sable.color,   tinct: "sable",   sigil: "lion",    player: true,  keep: [0, 7] },
+  { id: 1, name: "House Vorthos", motto: "Iron wills temper the soul.",             color: TINCTURE.azure.color,   tinct: "azure",   sigil: "lion",    keep: [7, 0],  persona: "aggressive" },
+  { id: 2, name: "House Kaelen",  motto: "Shadows dance where light dares not.",    color: TINCTURE.purpure.color, tinct: "purpure", sigil: "serpent", keep: [7, -7], persona: "expansionist" },
+  { id: 3, name: "House Mirex",   motto: "Silence is the sharpest blade.",          color: TINCTURE.vert.color,    tinct: "vert",    sigil: "tower",   keep: [0, -7], persona: "defensive" },
+  { id: 4, name: "House Oryn",    motto: "Blood binds tighter than golden chains.", color: TINCTURE.gules.color,   tinct: "gules",   sigil: "eagle",   keep: [-7, 0], persona: "aggressive" },
+  { id: 5, name: "House Syla",    motto: "Grace is the mask of a hungry heart.",    color: TINCTURE.or.color,      tinct: "or",      sigil: "dove",    keep: [-7, 7], persona: "expansionist" },
 ];
 const ARB = 99; // arbiter house id
-const ARB_COLOR = "#cfd6e4";
+const ARB_TINCT = "argent";
 
 const POWERS = {
   firebrand: { name: "Firebrand", cost: 5, susp: 10,
@@ -90,8 +121,19 @@ let storyQueue = [];
 const diff = () => DIFFS[diffKey];
 
 const canvas = document.getElementById("board");
-const ctx = canvas.getContext("2d");
+let ctx = canvas.getContext("2d"); // reassigned briefly during renderStaticLayer() to target the offscreen cache
 let view = { s: 26, ox: 0, oy: 0 }; // hex size + pixel offset
+
+/* ---- heraldic render state (the roll-of-arms layer) ----
+   revealedUnits: which enemy units have been "emblazoned" (seen in true
+   tincture) this game — the unblazoned/fog treatment for units.
+   claimFx / revealFx / deathFx: short tweens for the crossfade/degrade
+   effects; alarmFlash: the single reserved-tone exposure pulse.
+   staticDirty gates the offscreen terrain+claim cache (guardrail: redraw
+   only on state change, never per frame). */
+let revealedUnits, claimFx, revealFx, deathFx, alarmFlash;
+let staticDirty = true;
+let rafHandle = null;
 
 /* ---------------- helpers ---------------- */
 
@@ -130,8 +172,11 @@ function generateMap() {
       else if (roll < 0.19) terrain = "mountain";
       else if (roll < 0.24) terrain = "water";
       else if (roll < 0.29) terrain = "ruins";
+      // vellum mottle: a low-frequency per-tile brightness jitter, baked once
+      // at generation (not recomputed per frame) — ±4% of the ground tone.
+      const mottle = (Math.random() - 0.5) * 0.08;
       tiles.set(key(q, r), { q, r, terrain, camp: false, campOwner: null,
-                             keep: null, keepRuin: false, spire: false, looted: false });
+                             keep: null, keepRuin: false, spire: false, looted: false, mottle });
     }
 
   // spire at center, clear approach
@@ -187,6 +232,8 @@ function newGame() {
   pacts = new Set(); brokenPacts = new Set(); offeredPacts = new Set();
   usedEvents = new Set(); avatarBusyNext = false;
   reachCache = null; storyQueue = [];
+  revealedUnits = new Set(); claimFx = new Map(); revealFx = new Map();
+  deathFx = []; alarmFlash = null; staticDirty = true;
 
   for (const h of houses) {
     const spots = freeNeighbors(h.keep[0], h.keep[1]);
@@ -224,7 +271,7 @@ function spawnUnit(house, type, q, r, champ) {
     id: uidSeq++, house, type, q, r,
     hp: src.hp, maxhp: src.hp, atk: src.atk, rng: src.rng, mv: src.mv,
     champ: champ || null, tempAtk: 0, movedDist: 0, kills: 0, vet: false,
-    moved: true, attacked: true, freed: false,
+    moved: true, attacked: true, freed: false, facing: house === 0 ? 1 : -1,
   };
   if (type === "enforcer") u.atk = diff().enforcerAtk;
   units.push(u);
@@ -285,6 +332,8 @@ function computeReach(u) {
 
 function doMove(u, q, r, dist) {
   u.movedDist = dist ?? hexDist(u, { q, r });
+  const from = toPixel(u.q, u.r), to = toPixel(q, r);
+  if (Math.abs(to.x - from.x) > 0.5) u.facing = to.x >= from.x ? 1 : -1;
   u.q = q; u.r = r; u.moved = true;
   if (u.house === 0) sfx("move");
   const t = tileAt(q, r);
@@ -320,6 +369,7 @@ function doMove(u, q, r, dist) {
   // loot ruins
   if (t.terrain === "ruins" && !t.looted) {
     t.looted = true;
+    staticDirty = true;
     if (u.house === 0) {
       houses[0].supply += 4;
       log("You scavenge the ruins. +4 supply.");
@@ -330,6 +380,7 @@ function doMove(u, q, r, dist) {
 
   if (t.camp && t.campOwner !== u.house) {
     t.campOwner = u.house;
+    markClaim(q, r);
     if (u.house === 0) log("Supply camp seized. +2 supply per turn.");
   }
   if (t.keep !== null && t.keep !== u.house) captureKeep(u, t);
@@ -340,6 +391,7 @@ function doMove(u, q, r, dist) {
 function doAttack(u, e) {
   u.attacked = true; u.moved = true; // attacking ends the unit's activation
   if (u.house === 0 && pacts.has(e.house)) breakPact(e.house);
+  revealUnit(u); revealUnit(e);
   sfx("strike");
   strike(u, e);
   if (e.hp > 0 && hexDist(u, e) <= e.rng) strike(e, u, true);
@@ -375,6 +427,7 @@ function strike(a, d, isCounter) {
 
 function kill(killer, dead) {
   dead.hp = 0;
+  pushDeathFx(dead);
   const deadHouse = houseById(dead.house);
   if (dead.type === "avatar") {
     units = units.filter(u => u.hp > 0);
@@ -412,10 +465,11 @@ function cheapestCost() { return TYPES.blade.cost; }
 
 function captureKeep(u, t) {
   const h = houseById(t.keep);
-  if (!h || !h.alive) { t.keep = null; t.keepRuin = true; return; }
+  if (!h || !h.alive) { t.keep = null; t.keepRuin = true; staticDirty = true; return; }
   if (u.house === 0 && pacts.has(h.id)) breakPact(h.id);
   fellHouse(h, u.house);
   t.keep = null; t.keepRuin = true;
+  staticDirty = true;
 }
 
 function fellHouse(h, byHouse) {
@@ -427,10 +481,11 @@ function fellHouse(h, byHouse) {
     if (u.house === h.id) {
       shackled.push({ q: u.q, r: u.r, type: u.type, from: h.id, champ: u.champ });
       u.hp = 0;
+      pushDeathFx(u);
     }
   units = units.filter(u => u.hp > 0);
   for (const t of tiles.values())
-    if (t.campOwner === h.id) t.campOwner = byHouse === ARB ? null : byHouse;
+    if (t.campOwner === h.id) { t.campOwner = byHouse === ARB ? null : byHouse; markClaim(t.q, t.r); }
   log(`${h.name}'s banner burns in the ash.`, "hot");
   if (!h.player && FALL_MISSIVES[h.id])
     story(`${h.name.toUpperCase()} FALLS`, CHAMPS[h.id]?.name ?? h.name, FALL_MISSIVES[h.id]);
@@ -451,6 +506,7 @@ function addSusp(n) {
     susp = 40;
     exposedTurns = 5;
     spawnEnforcers(2);
+    triggerExposureFlash();
     story("EXPOSED", "Your Mask Is Ash",
       "Your mask is ash, your name is a lie. The Conclave knows you are nothing but stolen fire — and every house turns its blades your way.");
     log("You are EXPOSED. The houses hunt you.", "hot");
@@ -629,8 +685,8 @@ function aiHouseTurn(h) {
         shackled = shackled.filter(s => s !== sh);
         h.supply += sh.champ ? 4 : 2;
       }
-      if (t.terrain === "ruins" && !t.looted) { t.looted = true; h.supply += 4; }
-      if (t.camp && t.campOwner !== h.id) t.campOwner = h.id;
+      if (t.terrain === "ruins" && !t.looted) { t.looted = true; h.supply += 4; staticDirty = true; }
+      if (t.camp && t.campOwner !== h.id) { t.campOwner = h.id; markClaim(t.q, t.r); }
       if (t.keep !== null && t.keep !== h.id) captureKeep(u, t);
       if (gameOver) return;
       targets = houseTargets(attackableFrom(u), h);
@@ -651,11 +707,17 @@ function stepToward(u, goal) {
     const dist = hexDist({ q, r }, goal);
     if (dist < bd) { bd = dist; best = { q, r, d }; }
   }
-  if (best) { u.q = best.q; u.r = best.r; u.movedDist = best.d; return true; }
+  if (best) {
+    const from = toPixel(u.q, u.r), to = toPixel(best.q, best.r);
+    if (Math.abs(to.x - from.x) > 0.5) u.facing = to.x >= from.x ? 1 : -1;
+    u.q = best.q; u.r = best.r; u.movedDist = best.d;
+    return true;
+  }
   return false;
 }
 
 function doAttackAI(u, e) {
+  revealUnit(u); revealUnit(e);
   strike(u, e);
   if (gameOver) return;
   if (e.hp > 0 && hexDist(u, e) <= e.rng) strike(e, u, true);
@@ -1107,6 +1169,10 @@ function loadGame() {
   tiles = new Map(s.tiles.map(t => [key(t.q, t.r), t]));
   selected = null; reachCache = null; storyQueue = []; pendingChoices = null;
   gameOver = false; busy = false; powerUsed = false;
+  // fog/claim/fx state isn't persisted (cosmetic only) — a resumed trial
+  // re-fogs enemy houses until the player makes contact again.
+  revealedUnits = new Set(); claimFx = new Map(); revealFx = new Map();
+  deathFx = []; alarmFlash = null; staticDirty = true;
   layoutView(); render(); updatePanel();
   log("You take the field again where you left it.");
   return true;
@@ -1217,19 +1283,137 @@ for (const id of Object.keys(POWERS)) {
   document.getElementById("p-" + id).addEventListener("click", () => usePower(id));
 }
 
-/* ---------------- rendering ---------------- */
+/* ---------------- rendering: The Attainted Roll ----------------
+   A roll-of-arms on vellum. Flat pigment, iron-gall ink linework, Petra
+   Sancta hatching standing in for color. No gradients, no particles — every
+   effect below is a transform/stroke-count/opacity tween.
 
-const TERRAIN_FILL = {
-  plains: "#241f30", forest: "#1e2b26", mountain: "#332e3d",
-  water: "#16202f", ruins: "#2a2333",
-};
+   Layering:
+     1. static board layer (terrain + camp/keep claim state) — offscreen,
+        cached, redrawn only when `staticDirty` is set by a state change.
+     2. move/attack overlays, shackles, in-flight claim/death/reveal tweens,
+        units — all cheap, redrawn every render() call (small N).
+     3. the one reserved alarm-tone exposure flash, always last, always brief.
+*/
+
+const REVEAL_MS = 180;  // "emblazoned" snap — hatch → flat tincture
+const CLAIM_MS  = 200;  // a camp changing hands
+const DEATH_MS  = 230;  // degradation of arms
+const ALARM_MS  = 550;  // exposure flash — the ONLY use of ALARM
+
+let hatchPatterns = null;
+const staticCanvas = document.createElement("canvas");
+const staticCtx = staticCanvas.getContext("2d");
+
+function shiftLight(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const f = c => Math.max(0, Math.min(255, Math.round(c + 255 * amt)));
+  return `rgb(${f((n >> 16) & 255)},${f((n >> 8) & 255)},${f(n & 255)})`;
+}
+
+// pre-render each Petra Sancta hatch as a small tiling bitmap ONCE at load —
+// applied via fillStyle pattern from then on, never stroked per-hex/per-frame.
+function buildHatchPatterns() {
+  const T = 15;
+  const mk = draw => {
+    const c = document.createElement("canvas");
+    c.width = T; c.height = T;
+    draw(c.getContext("2d"), T);
+    return ctx.createPattern(c, "repeat");
+  };
+  hatchPatterns = {
+    horizontal: mk((g, t) => {
+      g.strokeStyle = INK; g.lineWidth = 1.1;
+      g.beginPath(); g.moveTo(0, t * 0.5); g.lineTo(t, t * 0.5); g.stroke();
+    }),
+    vertical: mk((g, t) => {
+      g.strokeStyle = INK; g.lineWidth = 1.1;
+      g.beginPath(); g.moveTo(t * 0.5, 0); g.lineTo(t * 0.5, t); g.stroke();
+    }),
+    diagonal: mk((g, t) => {
+      g.strokeStyle = INK; g.lineWidth = 1.1;
+      for (const [x0, y0, x1, y1] of [[0, t, t, 0], [-t * 0.5, t * 0.5, t * 0.5, -t * 0.5], [t * 0.5, t * 1.5, t * 1.5, t * 0.5]]) {
+        g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+      }
+    }),
+    dots: mk((g, t) => {
+      g.fillStyle = INK;
+      for (const [dx, dy] of [[0.25, 0.25], [0.75, 0.75], [0.75, 0.25], [0.25, 0.75]]) {
+        g.beginPath(); g.arc(t * dx, t * dy, t * 0.1, 0, Math.PI * 2); g.fill();
+      }
+    }),
+    crosshatch: mk((g, t) => {
+      g.strokeStyle = INK; g.lineWidth = 1.1;
+      g.beginPath(); g.moveTo(t * 0.5, 0); g.lineTo(t * 0.5, t); g.stroke();
+      g.beginPath(); g.moveTo(0, t * 0.5); g.lineTo(t, t * 0.5); g.stroke();
+    }),
+    blank: null,
+  };
+}
+
+// fills the CURRENT path (caller already built it) with a tincture's hatch,
+// crossfading toward the flat pigment as revealP goes 0 -> 1. This one
+// function IS the "unblazoned -> emblazoned" fog-of-war/claim mechanic.
+function blazonFill(tinctKey, revealP) {
+  const t = TINCTURE[tinctKey] || TINCTURE.argent;
+  ctx.fillStyle = t.hatch === "blank" ? VELLUM : hatchPatterns[t.hatch];
+  ctx.fill();
+  if (revealP > 0) {
+    ctx.save();
+    ctx.globalAlpha = revealP;
+    ctx.fillStyle = t.color;
+    ctx.fill();
+    ctx.restore();
+  }
+  return chargeColorFor(tinctKey, revealP);
+}
+
+// the rule of tincture, applied to a field that's part hatch (pale, mostly
+// vellum) and part flat pigment (revealP): pick whichever of ink/vellum
+// reads clearly against that blend, so a charge is never lost on its own
+// field — this is what saves Ash's lion from vanishing into Sable.
+function chargeColorFor(tinctKey, revealP) {
+  const t = TINCTURE[tinctKey] || TINCTURE.argent;
+  const fieldIsMetal = revealP >= 0.5 ? t.metal : true; // hatch phase reads as pale vellum
+  return fieldIsMetal ? INK : VELLUM;
+}
+
+/* ---- tween-driving state: markClaim / revealUnit / pushDeathFx / triggerExposureFlash ---- */
+
+function ensureRaf() {
+  if (rafHandle == null) rafHandle = requestAnimationFrame(() => { rafHandle = null; render(); });
+}
+function markClaim(q, r) {
+  claimFx.set(key(q, r), { start: performance.now() });
+  ensureRaf();
+}
+function revealUnit(u) {
+  if (!u || u.house === 0 || u.house === ARB || revealedUnits.has(u.id)) return;
+  revealedUnits.add(u.id);
+  revealFx.set(u.id, { start: performance.now() });
+  ensureRaf();
+}
+function pushDeathFx(u) {
+  deathFx.push({
+    q: u.q, r: u.r, house: u.house, type: u.type, champ: u.champ,
+    facing: u.facing || 1, start: performance.now(),
+  });
+  ensureRaf();
+}
+function triggerExposureFlash() {
+  alarmFlash = { start: performance.now() };
+  ensureRaf();
+}
 
 function layoutView() {
   canvas.width = canvas.clientWidth * devicePixelRatio;
   canvas.height = canvas.clientHeight * devicePixelRatio;
+  staticCanvas.width = canvas.width;
+  staticCanvas.height = canvas.height;
   const w = canvas.width, hgt = canvas.height;
   view.s = Math.min(w / ((2 * R + 2) * SQ3), hgt / ((2 * R + 2) * 1.5)) * 0.98;
   view.ox = w / 2; view.oy = hgt / 2;
+  staticDirty = true;
 }
 window.addEventListener("resize", () => { layoutView(); render(); });
 document.addEventListener("visibilitychange", () => {
@@ -1251,27 +1435,58 @@ function hexPath(x, y, s) {
   ctx.closePath();
 }
 
-function render() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const s = view.s;
+/* ---- static board layer: terrain + claim state, baked once per change ---- */
 
+function renderStaticLayer() {
+  buildHatchPatterns.built || (buildHatchPatterns(), (buildHatchPatterns.built = true));
+  const g = staticCtx;
+  g.clearRect(0, 0, staticCanvas.width, staticCanvas.height);
+  const s = view.s;
+  const savedCtx = ctx;
+  // the terrain/claim painters below all use the module-level `ctx` — swap
+  // it to the offscreen context for this pass, then restore.
+  ctxSwap(g);
   for (const t of tiles.values()) {
     const { x, y } = toPixel(t.q, t.r);
     hexPath(x, y, s * 0.96);
-    ctx.fillStyle = TERRAIN_FILL[t.terrain];
+    ctx.fillStyle = shiftLight(VELLUM, t.mottle);
     ctx.fill();
-    ctx.strokeStyle = "#0d0b10";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    if (t.terrain === "forest") drawForest(x, y, s);
-    if (t.terrain === "mountain") drawMountain(x, y, s);
-    if (t.terrain === "water") drawWater(x, y, s);
-    if (t.terrain === "ruins") drawRuins(x, y, s, t.looted);
-    if (t.camp) drawCamp(x, y, s, t.campOwner);
-    if (t.keep !== null) drawKeep(x, y, s, houseById(t.keep));
-    if (t.keepRuin) drawKeepRuin(x, y, s);
-    if (t.spire) drawSpire(x, y, s);
+    if (t.terrain === "forest") drawForestTile(x, y, s);
+    if (t.terrain === "mountain") drawMountainTile(x, y, s);
+    if (t.terrain === "water") drawWaterTile(x, y, s);
+    if (t.terrain === "ruins") drawRuinsTile(x, y, s, t.looted);
+    if (t.camp && !claimFx.has(key(t.q, t.r))) drawCampMarker(x, y, s, t.campOwner, 1);
+    if (t.keep !== null) drawKeepMarker(x, y, s, houseById(t.keep));
+    if (t.keepRuin) drawKeepRuinMarker(x, y, s);
+    if (t.spire) drawSpireMarker(x, y, s);
+  }
+  ctxSwap(savedCtx);
+}
+// tiny helper so the terrain painters (written once) work against either the
+// live canvas or the offscreen static cache without duplicating them — every
+// draw* function below reads the module-level `ctx` at call time.
+function ctxSwap(g) { ctx = g; }
+
+function render() {
+  if (staticDirty) { renderStaticLayer(); staticDirty = false; }
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(staticCanvas, 0, 0);
+  const s = view.s;
+  const now = performance.now();
+
+  // camps mid-claim: overpaint just that hex with the live crossfade
+  for (const [k, fx] of [...claimFx]) {
+    const [q, r] = k.split(",").map(Number);
+    const t = tileAt(q, r);
+    if (!t) { claimFx.delete(k); continue; }
+    const p = Math.min(1, (now - fx.start) / CLAIM_MS);
+    const { x, y } = toPixel(q, r);
+    drawCampMarker(x, y, s, t.campOwner, p);
+    if (p >= 1) { claimFx.delete(k); staticDirty = true; } else ensureRaf();
   }
 
   if (reachCache) {
@@ -1279,10 +1494,10 @@ function render() {
       const [q, r] = k.split(",").map(Number);
       const { x, y } = toPixel(q, r);
       hexPath(x, y, s * 0.96);
-      ctx.fillStyle = "rgba(90, 150, 255, .22)";
+      ctx.fillStyle = "rgba(44, 79, 124, .20)"; // azure wash, flat — an available move
       ctx.fill();
-      ctx.strokeStyle = "rgba(120, 170, 255, .5)";
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 1.2;
       ctx.stroke();
     }
     for (const id of reachCache.targets) {
@@ -1290,30 +1505,53 @@ function render() {
       if (!e) continue;
       const { x, y } = toPixel(e.q, e.r);
       ctx.beginPath();
-      ctx.arc(x, y, s * 0.75, 0, Math.PI * 2);
-      ctx.strokeStyle = "#ff5544";
-      ctx.lineWidth = 3;
+      ctx.arc(x, y, s * 0.78, 0, Math.PI * 2);
+      ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = TINCTURE.or.color; // one gold accent for "actionable" — never the alarm tone
+      ctx.lineWidth = 2.4;
       ctx.stroke();
+      ctx.setLineDash([]);
     }
   }
 
   for (const sh of shackled) drawShackle(sh);
-  for (const u of units) drawUnit(u);
-}
 
-function drawForest(x, y, s) {
-  ctx.fillStyle = "#2f4a3c";
-  for (const [dx, dy] of [[-0.3, 0.1], [0.25, -0.05], [0, 0.32]]) {
-    ctx.beginPath();
-    ctx.moveTo(x + dx * s, y + dy * s - s * 0.32);
-    ctx.lineTo(x + dx * s - s * 0.2, y + dy * s + s * 0.12);
-    ctx.lineTo(x + dx * s + s * 0.2, y + dy * s + s * 0.12);
-    ctx.closePath();
-    ctx.fill();
+  for (const d of [...deathFx]) {
+    const p = Math.min(1, (now - d.start) / DEATH_MS);
+    const { x, y } = toPixel(d.q, d.r);
+    const tinctKey = d.house === 0 ? "sable" : d.house === ARB ? ARB_TINCT : houseById(d.house)?.tinct || "argent";
+    drawBlazon(x, y, s * 0.56, tinctKey, 1, CHARGE[d.type] || "lion", d.facing, p);
+    if (p >= 1) deathFx.splice(deathFx.indexOf(d), 1); else ensureRaf();
+  }
+
+  for (const u of units) drawUnit(u);
+
+  if (alarmFlash) {
+    const p = Math.min(1, (now - alarmFlash.start) / ALARM_MS);
+    ctx.fillStyle = ALARM;
+    ctx.globalAlpha = Math.sin(p * Math.PI) * 0.3;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.globalAlpha = 1;
+    if (p >= 1) alarmFlash = null; else ensureRaf();
   }
 }
-function drawMountain(x, y, s) {
-  ctx.fillStyle = "#4a4356";
+
+/* ---- terrain: flat / single-hatch / cross-hatch — exactly three tiers ---- */
+
+function drawForestTile(x, y, s) {
+  ctx.fillStyle = "rgba(63, 107, 79, .12)"; // faint vert wash — accessibility backstop
+  hexPath(x, y, s * 0.9); ctx.fill();
+  for (const [dx, dy, r] of [[-0.28, 0.08, 0.22], [0.24, -0.06, 0.19], [0, 0.3, 0.2]]) {
+    ctx.beginPath();
+    ctx.arc(x + dx * s, y + dy * s, r * s, 0, Math.PI * 2);
+    ctx.fillStyle = hatchPatterns.dots; // single-hatch tier: stippled canopy
+    ctx.fill();
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
+  }
+}
+function drawMountainTile(x, y, s) {
+  ctx.fillStyle = "rgba(91, 58, 99, .10)"; // faint purpure-grey wash
+  hexPath(x, y, s * 0.9); ctx.fill();
   ctx.beginPath();
   ctx.moveTo(x - s * 0.45, y + s * 0.35);
   ctx.lineTo(x - s * 0.1, y - s * 0.38);
@@ -1321,145 +1559,443 @@ function drawMountain(x, y, s) {
   ctx.lineTo(x + 0.32 * s, y - 0.18 * s);
   ctx.lineTo(x + 0.55 * s, y + 0.35 * s);
   ctx.closePath();
+  ctx.fillStyle = hatchPatterns.crosshatch; // cross-hatch tier: relief hachures
   ctx.fill();
+  ctx.strokeStyle = INK; ctx.lineWidth = 1.4; ctx.stroke();
 }
-function drawWater(x, y, s) {
-  ctx.strokeStyle = "#3a5a80";
-  ctx.lineWidth = 1.5;
-  for (const dy of [-0.15, 0.15]) {
+function drawWaterTile(x, y, s) {
+  ctx.fillStyle = "rgba(44, 79, 124, .12)"; // faint azure wash
+  hexPath(x, y, s * 0.9); ctx.fill();
+  ctx.strokeStyle = INK; ctx.lineWidth = 1.3; // single-hatch tier: engraved wave-arcs
+  for (const dy of [-0.22, 0, 0.22]) {
     ctx.beginPath();
-    ctx.moveTo(x - s * 0.4, y + dy * s);
-    ctx.quadraticCurveTo(x - s * 0.15, y + (dy - 0.14) * s, x, y + dy * s);
-    ctx.quadraticCurveTo(x + s * 0.15, y + (dy + 0.14) * s, x + s * 0.4, y + dy * s);
+    ctx.moveTo(x - s * 0.42, y + dy * s);
+    ctx.quadraticCurveTo(x - s * 0.16, y + (dy - 0.13) * s, x, y + dy * s);
+    ctx.quadraticCurveTo(x + s * 0.16, y + (dy + 0.13) * s, x + s * 0.42, y + dy * s);
     ctx.stroke();
   }
 }
-function drawRuins(x, y, s, looted) {
-  ctx.fillStyle = looted ? "#3a3344" : "#57496b";
-  ctx.fillRect(x - s * 0.34, y - s * 0.1, s * 0.14, s * 0.4);
-  ctx.fillRect(x - s * 0.06, y - s * 0.28, s * 0.14, s * 0.58);
-  ctx.fillRect(x + s * 0.22, y - s * 0.02, s * 0.14, s * 0.32);
+function drawRuinsTile(x, y, s, looted) {
+  ctx.fillStyle = "rgba(91, 58, 99, .10)";
+  hexPath(x, y, s * 0.9); ctx.fill();
+  for (const [cx, top, h] of [[-0.27, -0.12, 0.42], [0, -0.3, 0.58], [0.26, -0.02, 0.32]]) {
+    const w = s * 0.14, bx = x + cx * s, by = y + top * s;
+    ctx.beginPath(); // jagged broken top edge instead of a clean rect
+    ctx.moveTo(bx - w / 2, by + h * s);
+    ctx.lineTo(bx - w / 2, by + s * 0.08);
+    ctx.lineTo(bx - w * 0.15, by);
+    ctx.lineTo(bx + w * 0.1, by + s * 0.1);
+    ctx.lineTo(bx + w / 2, by + s * 0.02);
+    ctx.lineTo(bx + w / 2, by + h * s);
+    ctx.closePath();
+    ctx.fillStyle = hatchPatterns.crosshatch; // cross-hatch tier: stone coursing
+    ctx.fill();
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
+  }
   if (!looted) {
-    ctx.fillStyle = "#d9b45b";
     ctx.beginPath();
     ctx.arc(x + s * 0.05, y + s * 0.38, s * 0.07, 0, Math.PI * 2);
+    ctx.fillStyle = TINCTURE.or.color;
     ctx.fill();
+    ctx.strokeStyle = INK; ctx.lineWidth = 1; ctx.stroke();
   }
 }
-function drawCamp(x, y, s, owner) {
-  ctx.fillStyle = owner !== null ? houseById(owner)?.color ?? "#777" : "#6b6377";
+
+/* ---- map furniture: camps / keeps / spire — same hatch/flat claim logic ---- */
+
+function drawCampMarker(x, y, s, owner, revealP) {
   ctx.beginPath();
   ctx.moveTo(x, y - s * 0.34);
   ctx.lineTo(x - s * 0.3, y + s * 0.26);
   ctx.lineTo(x + s * 0.3, y + s * 0.26);
   ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = "#0d0b10";
+  if (owner == null) {
+    ctx.fillStyle = VELLUM; ctx.fill(); // uncontested — blank/unblazoned pennant
+  } else {
+    const tinct = owner === 0 ? "sable" : owner === ARB ? ARB_TINCT : houseById(owner)?.tinct || "argent";
+    blazonFill(tinct, revealP);
+  }
+  ctx.strokeStyle = INK; ctx.lineWidth = 1.4; ctx.stroke();
   ctx.beginPath();
   ctx.moveTo(x, y - s * 0.05);
   ctx.lineTo(x - s * 0.1, y + s * 0.26);
   ctx.lineTo(x + s * 0.1, y + s * 0.26);
   ctx.closePath();
-  ctx.fill();
+  ctx.fillStyle = INK; ctx.fill();
 }
-function drawKeep(x, y, s, h) {
-  ctx.fillStyle = h ? h.color : "#777";
-  ctx.fillRect(x - s * 0.32, y - s * 0.28, s * 0.64, s * 0.56);
-  ctx.fillRect(x - s * 0.42, y - s * 0.5, s * 0.2, s * 0.3);
-  ctx.fillRect(x + s * 0.22, y - s * 0.5, s * 0.2, s * 0.3);
-  ctx.fillStyle = "#0d0b10";
+function drawKeepMarker(x, y, s, h) {
+  const tinct = h ? h.tinct : "argent";
+  ctx.beginPath();
+  ctx.rect(x - s * 0.32, y - s * 0.28, s * 0.64, s * 0.56);
+  ctx.rect(x - s * 0.42, y - s * 0.5, s * 0.2, s * 0.3);
+  ctx.rect(x + s * 0.22, y - s * 0.5, s * 0.2, s * 0.3);
+  blazonFill(tinct, 1); // keeps always belong to someone — never fogged
+  ctx.strokeStyle = INK; ctx.lineWidth = 1.4; ctx.stroke();
+  ctx.fillStyle = INK;
   ctx.fillRect(x - s * 0.1, y - s * 0.02, s * 0.2, s * 0.3);
 }
-function drawKeepRuin(x, y, s) {
-  ctx.strokeStyle = "#5a5264";
-  ctx.lineWidth = 2;
+function drawKeepRuinMarker(x, y, s) {
   ctx.beginPath();
-  ctx.moveTo(x - s * 0.3, y + s * 0.25); ctx.lineTo(x + s * 0.3, y - s * 0.25);
-  ctx.moveTo(x + s * 0.3, y + s * 0.25); ctx.lineTo(x - s * 0.3, y - s * 0.25);
-  ctx.stroke();
+  ctx.moveTo(x - s * 0.32, y + s * 0.28);
+  ctx.lineTo(x - s * 0.1, y - s * 0.1);
+  ctx.lineTo(x + s * 0.06, y + s * 0.06);
+  ctx.lineTo(x + s * 0.32, y - s * 0.28);
+  ctx.lineTo(x + s * 0.2, y + s * 0.3);
+  ctx.lineTo(x - s * 0.18, y + s * 0.32);
+  ctx.closePath();
+  ctx.fillStyle = hatchPatterns.crosshatch;
+  ctx.fill();
+  ctx.strokeStyle = INK; ctx.lineWidth = 1.6; ctx.stroke();
 }
-function drawSpire(x, y, s) {
+function drawSpireMarker(x, y, s) {
   const lit = spireUnlocked;
-  ctx.fillStyle = lit ? "#ffe9b0" : "#5d5870";
   ctx.beginPath();
   ctx.moveTo(x, y - s * 0.72);
   ctx.lineTo(x - s * 0.22, y + s * 0.4);
   ctx.lineTo(x + s * 0.22, y + s * 0.4);
   ctx.closePath();
+  ctx.fillStyle = lit ? TINCTURE.or.color : VELLUM;
   ctx.fill();
+  ctx.strokeStyle = INK; ctx.lineWidth = 1.6; ctx.stroke();
   if (lit) {
-    ctx.strokeStyle = "rgba(255, 220, 140, .8)";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1.4;
+    ctx.setLineDash([2, 3]);
     ctx.beginPath();
     ctx.arc(x, y, s * 0.85, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.setLineDash([]);
   }
 }
 function drawShackle(sh) {
   const { x, y } = toPixel(sh.q, sh.r);
   const s = view.s;
-  ctx.strokeStyle = sh.champ ? "#d9b45b" : "#9a93a8";
-  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 2;
   ctx.beginPath(); ctx.arc(x - s * 0.14, y, s * 0.16, 0, Math.PI * 2); ctx.stroke();
   ctx.beginPath(); ctx.arc(x + s * 0.14, y, s * 0.16, 0, Math.PI * 2); ctx.stroke();
-  ctx.fillStyle = sh.champ ? "#d9b45b" : "#9a93a8";
-  ctx.font = `${Math.round(s * 0.34)}px sans-serif`;
-  ctx.textAlign = "center";
-  ctx.fillText(sh.champ ? "★" : TYPES[sh.type].glyph, x, y + s * 0.55);
+  ctx.save();
+  ctx.translate(x, y + s * 0.02);
+  ctx.scale(0.55, 0.55);
+  drawCharge(ctx, CHARGE[sh.type] || "lion", s * 0.5, INK);
+  ctx.restore();
+  if (sh.champ) {
+    drawMullet(x + s * 0.24, y - s * 0.3, s * 0.12, TINCTURE.or.color);
+  }
 }
+
+/* ---- heraldic charges: silhouette-first, six distinct shapes, local coords ---- */
+
+function shieldPath(rad) {
+  const w = rad * 1.28, h = rad * 1.6;
+  ctx.beginPath();
+  ctx.moveTo(-w / 2, -h / 2);
+  ctx.lineTo(w / 2, -h / 2);
+  ctx.lineTo(w / 2, h * 0.06);
+  ctx.quadraticCurveTo(w / 2, h * 0.4, 0, h / 2);
+  ctx.quadraticCurveTo(-w / 2, h * 0.4, -w / 2, h * 0.06);
+  ctx.closePath();
+}
+
+function drawLion(g, s) {
+  g.beginPath();
+  g.moveTo(-s * 0.05, s * 0.32);
+  g.lineTo(-s * 0.22, s * 0.3);
+  g.lineTo(-s * 0.28, s * 0.05);
+  g.lineTo(-s * 0.18, -s * 0.1);
+  g.lineTo(-s * 0.24, -s * 0.3);
+  g.lineTo(-s * 0.12, -s * 0.34);
+  g.lineTo(-s * 0.14, -s * 0.14);
+  g.lineTo(0, -s * 0.02);
+  g.lineTo(s * 0.1, -s * 0.24);
+  g.lineTo(s * 0.22, -s * 0.3);
+  g.lineTo(s * 0.16, -s * 0.08);
+  g.lineTo(s * 0.22, s * 0.08);
+  g.lineTo(s * 0.3, s * 0.3);
+  g.lineTo(s * 0.16, s * 0.28);
+  g.lineTo(s * 0.08, s * 0.34);
+  g.closePath();
+  g.fill();
+  g.beginPath();
+  g.arc(-s * 0.02, -s * 0.4, s * 0.14, 0, Math.PI * 2);
+  g.fill();
+  g.lineWidth = s * 0.05;
+  g.beginPath();
+  g.moveTo(s * 0.28, s * 0.2);
+  g.quadraticCurveTo(s * 0.44, s * 0.1, s * 0.4, -s * 0.1);
+  g.quadraticCurveTo(s * 0.38, -s * 0.2, s * 0.3, -s * 0.16);
+  g.stroke();
+}
+function drawEagle(g, s) {
+  g.beginPath();
+  g.moveTo(0, -s * 0.3); g.lineTo(-s * 0.08, s * 0.1); g.lineTo(0, s * 0.34); g.lineTo(s * 0.08, s * 0.1);
+  g.closePath(); g.fill();
+  g.beginPath(); g.arc(0, -s * 0.36, s * 0.09, 0, Math.PI * 2); g.fill();
+  for (const side of [-1, 1]) {
+    g.beginPath();
+    g.moveTo(side * s * 0.06, -s * 0.08);
+    g.lineTo(side * s * 0.4, -s * 0.28);
+    g.lineTo(side * s * 0.34, -s * 0.1);
+    g.lineTo(side * s * 0.46, s * 0.02);
+    g.lineTo(side * s * 0.3, s * 0.06);
+    g.lineTo(side * s * 0.36, s * 0.2);
+    g.lineTo(side * s * 0.16, s * 0.14);
+    g.closePath();
+    g.fill();
+  }
+}
+function drawTower(g, s) {
+  g.fillRect(-s * 0.22, -s * 0.08, s * 0.44, s * 0.42);
+  g.fillRect(-s * 0.3, -s * 0.24, s * 0.14, s * 0.2);
+  g.fillRect(s * 0.16, -s * 0.24, s * 0.14, s * 0.2);
+  g.fillRect(-s * 0.06, -s * 0.24, s * 0.12, s * 0.16);
+}
+function drawHorse(g, s) {
+  g.beginPath();
+  g.moveTo(-s * 0.34, s * 0.3); g.lineTo(-s * 0.3, -s * 0.02); g.lineTo(-s * 0.2, -s * 0.1);
+  g.lineTo(-s * 0.2, -s * 0.24); g.lineTo(-s * 0.06, -s * 0.38); g.lineTo(s * 0.1, -s * 0.36);
+  g.lineTo(s * 0.06, -s * 0.26); g.lineTo(s * 0.18, -s * 0.2); g.lineTo(s * 0.3, -s * 0.06);
+  g.lineTo(s * 0.28, s * 0.1); g.lineTo(s * 0.34, s * 0.3); g.lineTo(s * 0.2, s * 0.28);
+  g.lineTo(s * 0.16, s * 0.06); g.lineTo(s * 0.02, s * 0.1); g.lineTo(-s * 0.06, s * 0.28);
+  g.lineTo(-s * 0.2, s * 0.3);
+  g.closePath();
+  g.fill();
+  g.lineWidth = s * 0.04;
+  g.beginPath();
+  g.moveTo(-s * 0.08, -s * 0.36); g.lineTo(-s * 0.02, -s * 0.22); g.lineTo(-s * 0.1, -s * 0.14);
+  g.stroke();
+}
+function drawSerpent(g, s) {
+  g.lineWidth = s * 0.13; g.lineCap = "round";
+  g.beginPath();
+  g.moveTo(-s * 0.28, s * 0.3);
+  g.quadraticCurveTo(-s * 0.34, 0, -s * 0.06, -s * 0.02);
+  g.quadraticCurveTo(s * 0.22, -s * 0.04, s * 0.16, -s * 0.24);
+  g.quadraticCurveTo(s * 0.1, -s * 0.4, -s * 0.02, -s * 0.32);
+  g.stroke();
+  g.beginPath();
+  g.moveTo(-s * 0.02, -s * 0.32); g.lineTo(s * 0.12, -s * 0.36); g.lineTo(s * 0.02, -s * 0.24);
+  g.closePath(); g.fill();
+  g.lineCap = "butt";
+}
+function drawDove(g, s) {
+  g.beginPath();
+  g.moveTo(-s * 0.28, s * 0.08);
+  g.quadraticCurveTo(-s * 0.1, -s * 0.1, s * 0.06, -s * 0.02);
+  g.quadraticCurveTo(s * 0.22, -s * 0.08, s * 0.34, -s * 0.24);
+  g.quadraticCurveTo(s * 0.2, -s * 0.04, s * 0.1, s * 0.02);
+  g.quadraticCurveTo(s * 0.18, s * 0.14, s * 0.1, s * 0.24);
+  g.quadraticCurveTo(-s * 0.02, s * 0.1, -s * 0.16, s * 0.14);
+  g.quadraticCurveTo(-s * 0.26, s * 0.16, -s * 0.28, s * 0.08);
+  g.closePath();
+  g.fill();
+}
+const CHARGE_DRAW = { lion: drawLion, eagle: drawEagle, tower: drawTower, horse: drawHorse, serpent: drawSerpent, dove: drawDove };
+function drawCharge(g, kind, size, color) {
+  g.fillStyle = color; g.strokeStyle = color;
+  (CHARGE_DRAW[kind] || drawLion)(g, size);
+}
+function drawMullet(x, y, r, color) {
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+    const a2 = a + Math.PI / 5;
+    ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+    ctx.lineTo(x + Math.cos(a2) * r * 0.42, y + Math.sin(a2) * r * 0.42);
+  }
+  ctx.closePath();
+  ctx.fillStyle = color; ctx.fill();
+  ctx.strokeStyle = INK; ctx.lineWidth = 1; ctx.stroke();
+}
+
+/* ---- HUD chrome: house badges + the wax-seal turn stamp share the exact
+   same shield/hatch/tincture/charge painters as the board — reskinned as a
+   copperplate book-plate panel, not a competing widget. ---- */
+
+function paintHouseBadge(canvasEl, h) {
+  const g = canvasEl.getContext("2d");
+  const saved = ctx;
+  ctxSwap(g);
+  const size = canvasEl.width;
+  ctx.clearRect(0, 0, size, size);
+  ctx.save();
+  ctx.translate(size / 2, size / 2);
+  const rad = size * 0.42;
+  shieldPath(rad);
+  const chargeColor = blazonFill(h.tinct, 1);
+  ctx.lineWidth = 1.4; ctx.strokeStyle = INK; ctx.stroke();
+  if (h.tinct === "sable") {
+    ctx.save(); shieldPath(rad); ctx.clip();
+    ctx.strokeStyle = "#4a3a2c"; ctx.lineWidth = rad * 0.22;
+    ctx.beginPath(); ctx.moveTo(-rad, -rad); ctx.lineTo(rad, rad); ctx.stroke();
+    ctx.restore();
+  }
+  drawCharge(ctx, h.sigil || "lion", rad * 0.62, chargeColor);
+  ctx.restore();
+  ctxSwap(saved);
+}
+
+// a small ink wax-seal, stamped with the turn number — the phase indicator.
+function paintSeal(canvasEl, turnNo, phase) {
+  const g = canvasEl.getContext("2d");
+  const saved = ctx;
+  ctxSwap(g);
+  const size = canvasEl.width, cx = size / 2, cy = size / 2, r = size * 0.44;
+  ctx.clearRect(0, 0, size, size);
+  ctx.save();
+  ctx.translate(cx, cy);
+  // a wax seal's edge is never a clean circle — small irregular bumps
+  ctx.beginPath();
+  const bumps = 14;
+  for (let i = 0; i <= bumps; i++) {
+    const a = (i / bumps) * Math.PI * 2;
+    const rr = r * (0.94 + 0.06 * Math.sin(a * 5 + turnNo));
+    const px = Math.cos(a) * rr, py = Math.sin(a) * rr;
+    i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fillStyle = phase === "enemy" ? "rgba(42,30,22,.12)" : VELLUM;
+  ctx.fill();
+  ctx.lineWidth = 1.6; ctx.strokeStyle = INK; ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.78, 0, Math.PI * 2);
+  ctx.lineWidth = 1; ctx.strokeStyle = INK; ctx.stroke();
+  ctx.fillStyle = INK;
+  ctx.font = `700 ${Math.round(r * 0.7)}px Georgia, "Iowan Old Style", serif`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(String(turnNo), 0, r * 0.05);
+  ctx.restore();
+  ctxSwap(saved);
+}
+
+// deterministic PRNG so a wounded unit's crack pattern doesn't jitter every render
+function seededRnd(seed) {
+  let n = (seed % 2147483647) || 1;
+  if (n < 0) n += 2147483646;
+  return () => (n = (n * 16807) % 2147483647) / 2147483647;
+}
+// the "wounded"/Suspicion primitive: 2-4 procedural jagged ink crack-strokes,
+// drawn in LOCAL coords over the charge already on the shield.
+function drawCracks(rad, count, seed, color = INK) {
+  const rnd2 = seededRnd(seed);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(1, rad * 0.08);
+  for (let i = 0; i < count; i++) {
+    const a0 = rnd2() * Math.PI * 2;
+    let cx = Math.cos(a0) * rad * 0.25, cy = Math.sin(a0) * rad * 0.25;
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    let ang = a0 + Math.PI * (0.5 + rnd2() * 0.5);
+    const segs = 2 + Math.floor(rnd2() * 2);
+    for (let j = 0; j < segs; j++) {
+      ang += (rnd2() - 0.5) * 1.7;
+      cx += Math.cos(ang) * rad * 0.32;
+      cy += Math.sin(ang) * rad * 0.32;
+      ctx.lineTo(cx, cy);
+    }
+    ctx.stroke();
+  }
+}
+
+// the single composed painter for a heraldic unit — used for live units,
+// the death-fx "degradation of arms" tween, and Ash's persistent exposed
+// state. flipP 0 = normal; flipP 1 = fully reversed (a real 2D emulation of
+// a vertical flip via scaleY, plus a diagonal strike-through ink bar).
+function drawBlazon(x, y, rad, tinctKey, revealP, chargeKind, facing, flipP = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(facing < 0 ? -1 : 1, flipP ? Math.cos(flipP * Math.PI) : 1);
+  shieldPath(rad);
+  const chargeColor = blazonFill(tinctKey, revealP);
+  ctx.lineWidth = tinctKey === "sable" ? 2.4 : 1.8;
+  ctx.strokeStyle = INK;
+  ctx.stroke();
+  if (tinctKey === "sable") { // bend-sinister baked into every Ash charge, turn one —
+    ctx.save();                // a dark umber bar, not a bright slash, so the whole
+    shieldPath(rad); ctx.clip(); // field stays "colour" and one charge tone still reads.
+    ctx.strokeStyle = "#4a3a2c";
+    ctx.lineWidth = rad * 0.22;
+    ctx.beginPath(); ctx.moveTo(-rad, -rad); ctx.lineTo(rad, rad); ctx.stroke();
+    ctx.restore();
+  }
+  drawCharge(ctx, chargeKind, rad * 0.62, chargeColor);
+  if (flipP > 0) {
+    ctx.strokeStyle = chargeColor;
+    ctx.lineWidth = rad * 0.28 * Math.min(1, flipP * 2.4);
+    ctx.beginPath();
+    ctx.moveTo(-rad * 1.05 * flipP, -rad * 0.7 * flipP);
+    ctx.lineTo(rad * 1.05 * flipP, rad * 0.7 * flipP);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawUnit(u) {
   const { x, y } = toPixel(u.q, u.r);
   const s = view.s;
-  const h = u.house === ARB ? { color: ARB_COLOR } : houseById(u.house);
-  const rad = s * 0.52;
+  const rad = s * 0.56;
+  const isPlayer = u.house === 0;
+  const isArb = u.house === ARB;
+  const tinctKey = isPlayer ? "sable" : isArb ? ARB_TINCT : houseById(u.house).tinct;
+  const facing = u.facing || (isPlayer ? 1 : -1);
+
+  let revealP = 1;
+  if (!isPlayer && !isArb) {
+    const fx = revealFx.get(u.id);
+    if (fx) {
+      revealP = Math.min(1, (performance.now() - fx.start) / REVEAL_MS);
+      if (revealP >= 1) revealFx.delete(u.id); else ensureRaf();
+    } else revealP = revealedUnits.has(u.id) ? 1 : 0;
+  }
 
   if (selected === u.id) {
-    ctx.beginPath(); ctx.arc(x, y, rad + 5, 0, Math.PI * 2);
-    ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.5; ctx.stroke();
-  }
-  ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2);
-  ctx.fillStyle = h.color; ctx.fill();
-  ctx.strokeStyle = u.type === "avatar" ? "#ffe9b0" : "#0d0b10";
-  ctx.lineWidth = u.type === "avatar" ? 3 : 2;
-  ctx.stroke();
-
-  // champion crest
-  if (u.champ) {
-    ctx.fillStyle = "#d9b45b";
-    ctx.beginPath();
-    ctx.moveTo(x, y - rad - 7);
-    ctx.lineTo(x - 5, y - rad - 1);
-    ctx.lineTo(x + 5, y - rad - 1);
-    ctx.closePath();
-    ctx.fill();
+    ctx.save();
+    ctx.translate(x, y);
+    shieldPath(rad + 5);
+    ctx.strokeStyle = INK; ctx.lineWidth = 2.2; ctx.setLineDash([3, 2]); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
   }
 
-  ctx.fillStyle = u.house === ARB ? "#1a1f2c" : "#0d0b10";
-  ctx.font = `bold ${Math.round(s * 0.5)}px sans-serif`;
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText(u.champ ? "★" : TYPES[u.type].glyph, x, y + 1);
-  ctx.textBaseline = "alphabetic";
+  // Suspicion is Ash's own mark, not the whole household's — everyone else
+  // (including Ash's own troops) reads wounds off plain HP instead.
+  const isAsh = u.type === "avatar";
+  const exposed = isAsh && exposedTurns > 0;
+  drawBlazon(x, y, rad, tinctKey, revealP, CHARGE[u.type] || "lion", facing, exposed ? 1 : 0);
 
-  const w = s * 1.0;
-  ctx.fillStyle = "#0d0b10";
-  ctx.fillRect(x - w / 2, y + rad + 3, w, 5);
-  ctx.fillStyle = u.hp / u.maxhp > 0.5 ? "#5fce7a" : u.hp / u.maxhp > 0.25 ? "#d9b45b" : "#e85555";
-  ctx.fillRect(x - w / 2, y + rad + 3, w * (u.hp / u.maxhp), 5);
+  if (u.champ) drawMullet(x + rad * 0.68, y - rad * 0.68, rad * 0.24, TINCTURE.or.color);
 
-  // veteran chevron
   if (u.vet) {
-    ctx.strokeStyle = "#ffe9b0";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(x - 5, y + rad + 12);
-    ctx.lineTo(x, y + rad + 8);
-    ctx.lineTo(x + 5, y + rad + 12);
-    ctx.stroke();
+    ctx.save(); ctx.translate(x, y); shieldPath(rad - 3);
+    ctx.strokeStyle = TINCTURE.or.color; ctx.lineWidth = 1.6; ctx.stroke();
+    ctx.restore();
   }
 
-  if (u.house === 0 && u.moved && u.attacked && !busy) {
-    ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(13, 11, 16, .45)"; ctx.fill();
+  // the Suspicion meter IS the art: escalating crack-strokes on Ash's own
+  // charge; every other unit (allied or enemy) reads wounds off raw HP.
+  ctx.save(); ctx.translate(x, y);
+  const crackColor = chargeColorFor(tinctKey, revealP);
+  if (isAsh) {
+    if (!exposed) {
+      const tier = susp >= 75 ? 3 : susp >= 50 ? 2 : susp >= 25 ? 1 : 0;
+      if (tier) drawCracks(rad, tier + 1, u.id * 7 + 3, crackColor);
+    }
+  } else {
+    const frac = u.hp / u.maxhp;
+    const tier = frac <= 0.15 ? 4 : frac <= 0.4 ? 3 : frac <= 0.66 ? 2 : 0;
+    if (tier) drawCracks(rad, tier, u.id * 13 + 1, crackColor);
+  }
+  ctx.restore();
+
+  const w = s * 0.9;
+  ctx.fillStyle = "rgba(233, 223, 199, .95)";
+  ctx.fillRect(x - w / 2, y + rad + 4, w, 4);
+  ctx.fillStyle = INK;
+  ctx.fillRect(x - w / 2, y + rad + 4, w * Math.max(0, u.hp / u.maxhp), 4);
+  ctx.strokeStyle = INK; ctx.lineWidth = 1; ctx.strokeRect(x - w / 2, y + rad + 4, w, 4);
+
+  if (isPlayer && u.moved && u.attacked && !busy) {
+    ctx.save(); ctx.translate(x, y); shieldPath(rad);
+    ctx.fillStyle = "rgba(42, 30, 22, .38)"; ctx.fill();
+    ctx.restore();
   }
 }
 
@@ -1473,16 +2009,26 @@ function updatePanel() {
     exposedTurns > 0 ? `${susp} · EXPOSED ${exposedTurns}` : susp;
   document.getElementById("suspfill").style.width = susp + "%";
 
+  const sealEl = document.getElementById("seal");
+  if (sealEl) paintSeal(sealEl, turn, busy ? "enemy" : "player");
+
   const hDiv = document.getElementById("houses");
   hDiv.innerHTML = "";
   for (const h of houses) {
     const row = document.createElement("div");
     row.className = "hrow" + (h.alive ? "" : " dead");
-    const tag = pacts.has(h.id) ? " · <span style='color:var(--gold)'>vassal</span>"
-              : brokenPacts.has(h.id) && h.alive ? " · <span style='color:#e85555'>betrayed</span>" : "";
-    row.innerHTML = `<span class="hdot" style="background:${h.color}"></span>` +
-      `<span>${h.name}${tag}</span><span class="motto">${h.player ? "" : h.motto}</span>`;
+    const badge = document.createElement("canvas");
+    badge.className = "hbadge"; badge.width = 22; badge.height = 22;
+    const label = document.createElement("span");
+    const tag = pacts.has(h.id) ? " · vassal"
+              : brokenPacts.has(h.id) && h.alive ? " · betrayed" : "";
+    label.innerHTML = `${h.name}<span class="tag${tag ? (tag.includes("vassal") ? " gold" : " broken") : ""}">${tag}</span>`;
+    const motto = document.createElement("span");
+    motto.className = "motto";
+    motto.textContent = h.player ? "" : h.motto;
+    row.append(badge, label, motto);
     hDiv.appendChild(row);
+    paintHouseBadge(badge, h);
   }
 
   const sel = selected ? units.find(u => u.id === selected) : null;

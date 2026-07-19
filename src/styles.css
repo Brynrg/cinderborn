@@ -1,20 +1,26 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* The Attainted Roll — flat pigment + iron-gall ink, no gradients anywhere.
+   One reserved alarm/ember tone (--alarm) exists ONLY for the momentary
+   exposure-flash VFX drawn on <canvas id="board">; it must never appear as
+   ambient chrome here. */
 :root {
-  --bg: #0d0b10;
-  --panel: #16121c;
-  --edge: #2b2338;
-  --ink: #d8d2e0;
-  --dim: #8a8096;
-  --ember: #e8642c;
-  --ember2: #ffa04d;
-  --gold: #d9b45b;
+  --ink: #2a1e16;
+  --vellum: #e9dfc7;
+  --vellum-shell: #ddd0ab;
+  --vellum-panel: #e4d7b4;
+  --hairline: rgba(42, 30, 22, .35);
+  --dim: #6b5c48;
+  --gold: #c99a2e;
+  --alarm: #b23a1f; /* reserved: exposure-flash VFX only */
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --sans: "Avenir Next", "Segoe UI", system-ui, sans-serif;
 }
 
 body {
-  background: var(--bg);
+  background: var(--vellum-shell);
   color: var(--ink);
-  font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  font-family: var(--sans);
   overflow: hidden;
 }
 
@@ -24,14 +30,16 @@ body {
   flex: 1;
   height: 100vh;
   display: block;
-  background: radial-gradient(ellipse at 50% 40%, #171321 0%, #0d0b10 70%);
+  background: var(--vellum-shell);
   cursor: pointer;
 }
 
+/* ---- the copperplate book-plate panel ---- */
+
 #panel {
   width: 300px;
-  background: var(--panel);
-  border-left: 1px solid var(--edge);
+  background: var(--vellum-panel);
+  border-left: 2px solid var(--ink);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -40,123 +48,134 @@ body {
 }
 
 #panel h1, .card h1 {
-  font-size: 26px;
-  letter-spacing: 4px;
-  color: var(--ember2);
-  text-shadow: 0 0 18px rgba(232, 100, 44, .5);
+  font-family: var(--serif);
+  font-size: 25px;
+  letter-spacing: 3px;
+  color: var(--ink);
 }
 
-.sub { color: var(--dim); font-size: 12px; letter-spacing: 3px; text-transform: uppercase; margin-top: -6px; }
+/* copperplate double-hairline rule: two thin ink lines with a gap between,
+   used to frame the panel's sections instead of a single heavy border */
+.sub {
+  color: var(--dim); font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+  margin-top: -6px; padding-bottom: 7px;
+  border-bottom: 1px solid var(--ink);
+  box-shadow: 0 3px 0 -1px var(--ink);
+}
 
-#stats { display: flex; gap: 8px; }
+#stats { display: flex; gap: 8px; align-items: stretch; }
+.stat-seal { flex: none; align-self: center; }
 .stat {
-  flex: 1; background: #1d1826; border: 1px solid var(--edge); border-radius: 6px;
+  flex: 1; background: var(--vellum); border: 1px solid var(--hairline); border-radius: 2px;
   padding: 6px 8px; text-align: center;
 }
 .stat span { display: block; font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; }
-.stat b { font-size: 18px; color: var(--gold); }
+.stat b { font-family: var(--serif); font-size: 18px; color: var(--ink); font-weight: 700; }
 
 #suspwrap { padding: 2px 2px 0; }
 #suspwrap .boxtitle { margin-bottom: 3px; }
-#susp-num { color: var(--gold); }
+#susp-num { color: var(--ink); font-weight: 700; }
 #suspbar {
-  height: 8px; background: #1d1826; border: 1px solid var(--edge); border-radius: 4px;
+  height: 8px; background: var(--vellum); border: 1px solid var(--ink); border-radius: 1px;
   overflow: hidden;
 }
-#suspfill {
-  height: 100%; width: 0%;
-  background: linear-gradient(90deg, #6d5a2e, #d9b45b 55%, #e8642c 80%, #ff4433);
-  transition: width .25s;
-}
+/* flat ink fill — the escalating crack-strokes on Ash's own charge (the
+   board) carry the drama; this readout stays quiet, per the concept's
+   "never let alarm color collide with house color" rule. */
+#suspfill { height: 100%; width: 0%; background: var(--ink); transition: width .25s; }
 .dim { color: var(--dim); font-weight: 400; text-transform: none; letter-spacing: 0; }
 
-#powers button {
+#powers button, #recruit button {
   display: block; width: 100%; margin-bottom: 5px; padding: 7px 9px;
-  background: #2a1d24; color: var(--ink); border: 1px solid #4a2b38; border-radius: 5px;
-  font-size: 12px; text-align: left; cursor: pointer;
+  background: var(--vellum); color: var(--ink); border: 1px solid var(--hairline); border-radius: 2px;
+  font-size: 12px; text-align: left; cursor: pointer; font-family: var(--sans);
 }
-#powers button:hover:not(:disabled) { border-color: var(--ember2); }
-#powers button:disabled { opacity: .35; cursor: default; }
+#powers button:hover:not(:disabled), #recruit button:hover:not(:disabled) { border-color: var(--ink); }
+#powers button:disabled, #recruit button:disabled { opacity: .4; cursor: default; }
 
-#houses { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+#houses { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
 .hrow { display: flex; align-items: center; gap: 7px; padding: 2px 4px; }
-.hdot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
-.hrow.dead { opacity: .35; text-decoration: line-through; }
+.hbadge { flex: none; width: 22px; height: 22px; }
+.hrow.dead { opacity: .4; text-decoration: line-through; }
+.hrow .tag { font-weight: 400; }
+.hrow .tag.gold { color: var(--gold); }
+.hrow .tag.broken { color: var(--ink); font-style: italic; }
 .hrow .motto { color: var(--dim); font-size: 10px; font-style: italic; margin-left: auto; text-align: right; }
 
 .box {
-  background: #1d1826; border: 1px solid var(--edge); border-radius: 6px;
+  background: var(--vellum); border: 1px solid var(--hairline); border-radius: 2px;
   padding: 8px 10px; font-size: 12px; line-height: 1.5;
 }
-.boxtitle { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--dim); margin-bottom: 6px; }
-
-#recruit button {
-  display: block; width: 100%; margin-bottom: 5px; padding: 7px 9px;
-  background: #241d31; color: var(--ink); border: 1px solid var(--edge); border-radius: 5px;
-  font-size: 12px; text-align: left; cursor: pointer;
+.boxtitle {
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--dim);
+  margin-bottom: 7px; padding-bottom: 5px;
+  border-bottom: 1px solid var(--ink);
+  box-shadow: 0 3px 0 -1px var(--ink);
 }
-#recruit button:hover:not(:disabled) { border-color: var(--ember); }
-#recruit button:disabled { opacity: .35; cursor: default; }
 
 #endturn {
   padding: 12px; font-size: 14px; letter-spacing: 2px; font-weight: 700;
-  background: linear-gradient(180deg, #e8642c, #b8431a); color: #fff;
-  border: none; border-radius: 6px; cursor: pointer;
+  font-family: var(--serif);
+  background: var(--ink); color: var(--vellum);
+  border: 1px solid var(--ink); border-radius: 2px; cursor: pointer;
 }
-#endturn:hover { filter: brightness(1.15); }
-#endturn:disabled { filter: grayscale(1) brightness(.6); cursor: default; }
-.key { background: rgba(0,0,0,.3); border-radius: 3px; padding: 1px 6px; font-size: 11px; }
+#endturn:hover { background: #3a2a1e; }
+#endturn:disabled { opacity: .45; cursor: default; }
+.key { background: rgba(233, 223, 199, .3); border-radius: 2px; padding: 1px 6px; font-size: 11px; }
 
 #log { flex: 1; min-height: 110px; overflow-y: auto; }
 #log div { margin-bottom: 3px; color: var(--dim); }
-#log div.hot { color: var(--ember2); }
-#log div.gold { color: var(--gold); }
+#log div.hot { color: var(--alarm); }
+#log div.gold { color: var(--gold); font-weight: 600; }
 
 #help { font-size: 11px; color: var(--dim); line-height: 1.5; }
 
+/* ---- overlays: title / missives / end — same flat vellum-and-ink voice ---- */
+
 .overlay {
-  position: fixed; inset: 0; background: rgba(8, 6, 12, .88);
+  position: fixed; inset: 0; background: rgba(42, 30, 22, .78);
   display: flex; align-items: center; justify-content: center; z-index: 10;
 }
 .overlay.hidden { display: none; }
 .card {
-  max-width: 560px; background: var(--panel); border: 1px solid var(--edge);
-  border-radius: 10px; padding: 36px 42px; text-align: center;
-  box-shadow: 0 0 60px rgba(232, 100, 44, .15);
+  max-width: 560px; background: var(--vellum-panel); border: 2px solid var(--ink);
+  border-radius: 4px; padding: 36px 42px; text-align: center;
 }
 .card p { margin: 12px 0; line-height: 1.6; color: var(--ink); font-size: 14px; }
 .card button {
   margin-top: 16px; padding: 13px 34px; font-size: 15px; letter-spacing: 3px; font-weight: 700;
-  background: linear-gradient(180deg, #e8642c, #b8431a); color: #fff;
-  border: none; border-radius: 6px; cursor: pointer;
+  font-family: var(--serif);
+  background: var(--ink); color: var(--vellum);
+  border: 1px solid var(--ink); border-radius: 2px; cursor: pointer;
 }
-.card button:hover { filter: brightness(1.15); }
+.card button:hover { background: #3a2a1e; }
 
 #diffrow { display: flex; gap: 8px; justify-content: center; margin-top: 14px; }
 #diffrow .diff {
   margin-top: 0; padding: 8px 14px; font-size: 12px; letter-spacing: 2px;
-  background: #241d31; border: 1px solid var(--edge); color: var(--ink);
+  background: var(--vellum); border: 1px solid var(--hairline); color: var(--ink);
 }
 #diffrow .diff span {
   display: block; font-size: 9px; letter-spacing: 1px; color: var(--dim);
   font-weight: 400; text-transform: lowercase; margin-top: 2px;
 }
-#diffrow .diff.selected { border-color: var(--ember); box-shadow: 0 0 12px rgba(232, 100, 44, .35); }
+#diffrow .diff.selected { border-color: var(--ink); border-width: 2px; }
 
-#continue { background: #241d31; border: 1px solid var(--gold); color: var(--gold); margin-left: 10px; }
+#continue { background: var(--vellum); border: 1px solid var(--gold); color: var(--ink); margin-left: 10px; }
 #continue.hidden { display: none; }
 
 #story-choices { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
 #story-choices.hidden { display: none; }
 #story-choices button {
   margin-top: 0; padding: 11px 18px; font-size: 13px; letter-spacing: 1px;
-  background: #241d31; border: 1px solid var(--edge); color: var(--ink); font-weight: 600;
+  background: var(--vellum); border: 1px solid var(--hairline); color: var(--ink); font-weight: 600;
+  font-family: var(--sans);
 }
-#story-choices button:hover { border-color: var(--ember2); }
+#story-choices button:hover { border-color: var(--ink); }
 #story-ok.hidden { display: none; }
 
 #mute {
-  float: right; background: none; border: 1px solid var(--edge); border-radius: 5px;
+  float: right; background: none; border: 1px solid var(--hairline); border-radius: 2px;
   font-size: 13px; padding: 2px 7px; cursor: pointer; color: var(--ink);
 }
 #mute.muted { opacity: .4; }

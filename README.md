@@ -1,68 +1,103 @@
-# Cinderborn — The Conclave Trials
+# Cinderborn — The Ashen Causeway
 
-A browser strategy game. Turn-based hex tactics: you are Ash, a lowcaste Cinder
-remade to pass as one of the ruling Lumen, thrown into the Conclave Trials — a
-proving-ground war between six noble houses and their champions. Conquer rival
-keeps, free the shackled captives of fallen houses to swell your ranks, guard
-the secret of what you are, and when the Arbiters rig the trial against you,
-storm their Spire.
+A small, complete tactical trial about a stolen noble identity, forbidden fire,
+and the cost of getting people out alive. The default entry is the Ashen
+Causeway prototype. The original Conclave campaign remains at `conclave.html`, with its
+existing save separate from the trial.
 
-Live at <https://speedrungames.net/games/cinderborn/>.
+## Play locally
 
-## Run it
-
-```bash
-npm install
-npm run dev       # local dev server
-npm test          # build + Playwright smoke test
+```sh
+npm ci
+npm run dev -- --host 127.0.0.1 --port 5178 --strictPort
 ```
 
-Every push to `main` auto-deploys to the portal.
+Open http://127.0.0.1:5178/ in a desktop browser. Saves belong to that browser
+and origin: keep using the same hostname and port to continue a run.
 
-## How to play
+Publication uses the standard GitHub path: a push to `main` triggers the shared
+deploy workflow, canonical portal ingest and an auto-merging portal PR. Verify
+its checks and the live game page after publishing. Never copy build files into
+the portal by hand.
 
-- **Click** a unit to select it; blue hexes = movement, red rings = attack
-  targets. **Tab** cycles ready units. **E** ends the turn. **Esc** deselects.
-- Walk onto a **shackled marker** (chain icon) to free that unit — it joins
-  you. Freeing 8+ captives changes the ending. Gold-chained markers are fallen
-  **champions**; free one and it fights for you, name and all.
-- **Ash (✦) is you.** Ash regenerates 2 HP/turn — but if Ash dies, you lose.
-  While your cover holds, no house dares strike a "noble scion"; once you are
-  exposed (or the trial drags past turn 10), that protection is gone.
-- **Embercraft** (one power per turn, costs supply, raises **Suspicion**):
-  Firebrand (+3 attack), Mend (heal 8), Veilstep (a unit acts again).
-  At 50 suspicion the Arbiters send a probe; at 100 you are **exposed** — every
-  house hunts you for 5 turns.
-- Loot **ruins** (gold-flecked columns) for +4 supply. Hold **camps** for
-  income. **Heralds** heal adjacent allies; **Lancers** hit harder after
-  charging 3+ hexes.
-- Defeat houses by taking their keep. When 3 houses have fallen the central
-  **Spire** unlocks (and its guard wakes). End a unit's move on the Spire to
-  win — as **liberator** (8+ freed), by **quiet coronation** (2+ living
-  vassals), or as **conqueror**.
-- **Envoys & pacts**: a cornered house may offer vassalage — tribute each turn,
-  and their blades never seek yours. Strike a vassal and the pact breaks
-  (+15 suspicion; they remember).
-- **Choice missives** arrive every few turns — shelter runaway Cinders or turn
-  them in, bluff an Arbiter's lineage test, tell your freed soldiers the truth.
-  Choices move supply, suspicion, renown, and units.
-- Units that make 2 kills become **veterans** (+1 ATK, +3 HP, gold chevron).
-- Three difficulties on the title screen (Ember / Trial / Pyre); the game
-  **autosaves** each turn — Continue resumes a run in progress. 🔊 toggles sound.
+## The trial
 
-## Design & IP notes
+- Command Ash, Rook, Sable and Iona on a 61-hex map. Each can move once and
+  take one action each round. An action ends the unit's activation.
+- Secure the trial seal and extract Ash at the eastern exit before ending
+  round 12. Ash's death loses immediately.
+- Keep cover: present the stolen signet at the checkpoint, then speak to
+  Vesper within two hexes. Her bargain gives you the seal, permission to free
+  both captives and an inspection delay, but binds you to escort Mara and
+  Brann beside the exit. A captive's death breaks the oath.
+- Break cover: Firebrand burns the gate or hits an enemy within two hexes.
+  Taking the shrine's seal, attacking, or using Firebrand alarms the guards.
+  At 50 suspicion, Ash is exposed and Firebrand damage rises from 5 to 7.
+- Embercraft costs one of four embers; only one spell per round. Mend heals
+  7 within three hexes and adds 15 suspicion; Firebrand adds 40 suspicion.
+  Iona's adjacent Bandage heals 5 without spending embers or raising suspicion.
+- Captives can also be freed after their jailer falls. Rescued allies act
+  next round. A full band preserves a rescue in reserve instead of discarding it.
+- Arbiters arrive at marked beacons in round 6, or round 8 after the bargain.
+  They hunt your band even with intact cover. Occupied beacons use the nearest
+  free tile. Their first attack follows their displayed intent next round.
+- Enemy intentions target fixed hexes. Move away to evade. Forest absorbs
+  1 damage, Guard absorbs 2, cliffs block normal shots. Surviving defenders
+  retaliate if they can reach the attacker. Inspect the exact forecast first.
 
-This game is *loosely inspired by* the themes of caste-dystopia fiction
-(a lowborn infiltrator; an academy war-game; victory through liberating the
-conquered). Those are **ideas and mechanics**, which copyright does not
-protect. Everything expressive here is original to this project:
+Click portraits or figures to select. Click an enemy to inspect, then Commit
+attack. Contextual interaction buttons appear near gates, captives, Vesper,
+the seal and exit. Blue tiles show reachable ground. Action outcomes appear
+above End round, with the recent history in Field journal.
 
-- Original world (city-state of Vael, Lumen/Cinder castes, the Conclave,
-  Arbiters, the Spire), original characters (Ash; the champions Kargan
-  Ironheart, Vespera Nightwhisper, Torin Stoneveil, Garen Bloodsworn, Elara
-  Moonhunger) — no names, characters, dialogue, or text are taken from any
-  novel.
-- No trademarks or trade dress of any franchise are used.
-- All art is procedural canvas drawing; all text was written for this game.
+Keys: **1–6** select allies, **E** end round, **Z** undo the latest uncommitted
+move, **F** fullscreen, **Escape** cancel targeting or close help/menu.
+Tab navigates controls; arrows plus Q/W navigate hexes; Enter selects.
+Sound defaults off. Play is entirely turn based; no timers run while deciding.
 
-Do not add franchise names, character names, or quoted text when extending it.
+## Save behavior
+
+The trial uses `cinderborn-causeway-v1`. Every successful action, pending
+choice and result is serialized. Continue restores the same open decision,
+action availability and enemy intents. Starting a new trial asks before
+replacing an existing trial. Corrupt saves fall back to a new trial; blocked
+storage shows a visible warning. Original Conclave saves are not converted.
+
+The original campaign's repaired save retains pending/queued events and
+pacts, resolved choice effects, used powers, actions and discovered heraldry.
+Its canvas has a bounded grid cell and its End Turn control stays outside
+the scrolling panel.
+
+## Development and checks
+
+```sh
+npm run typecheck   # Syntax checks all authored JS (historical script name)
+npm run build      # Builds both trial and original campaign
+npm run lint:paths # Relative asset path check
+npm test           # Pure rules tests, then real built-browser journeys
+```
+
+Install the Playwright Chromium browser once if needed:
+`npx playwright install chromium`. The browser suite starts a built preview
+on port 4173; keep that port free so it tests this checkout's build.
+
+`src/trial/scenario.js` owns the authored encounter and unit definitions;
+`tactics.js` owns movement, forecasts and intent execution; `actions.js` owns
+plain-data state transitions; `storage.js` validates persistence; `board.js`
+paints the map; `view.js` renders panels; `main.js` connects input and state.
+`src/main.js` and `src/styles.css` retain the original campaign.
+
+No runtime packages, external media or network game services were added.
+`base: "./"` remains required for the portal's `/games/cinderborn/` mount.
+Both entries use relative assets and can be served statically.
+
+## Playtest boundary
+
+The automated routes prove completion and persistence, not enjoyment or
+balanced difficulty. This is one authored encounter, with two spell types,
+six active allies maximum, no campaign progression and simple optional sound.
+Desktop Chromium has automated journey coverage; narrow layout is checked,
+but a phone touch playthrough and other browser engines are not yet proven.
+See `IMPROVEMENT_PLAN.md` for what to decide after playing.
+
+All world names, dialogue and procedural artwork are original to this project.

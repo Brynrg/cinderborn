@@ -1,16 +1,17 @@
 {
   "name": "cinderborn",
-  "version": "0.3.0",
+  "version": "0.4.0-trial.1",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "node --check src/main.js",
+    "typecheck": "node scripts/check-syntax.mjs",
     "lint:paths": "node scripts/check-relative-paths.mjs",
-    "test": "playwright test",
-    "deploy:portal": "npm run build && node scripts/deploy-portal.mjs"
+    "test": "npm run test:rules && playwright test",
+    "deploy:portal": "npm run build && node scripts/deploy-portal.mjs",
+    "test:rules": "node --test src/trial/*.test.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",

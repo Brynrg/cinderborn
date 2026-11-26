@@ -231,7 +231,8 @@ function newGame() {
   firstBlood = false; firstFree = false;
   pacts = new Set(); brokenPacts = new Set(); offeredPacts = new Set();
   usedEvents = new Set(); avatarBusyNext = false;
-  reachCache = null; storyQueue = [];
+  reachCache = null; storyQueue = []; pendingStory = null; pendingChoices = null;
+  document.getElementById("story").classList.add("hidden");
   revealedUnits = new Set(); claimFx = new Map(); revealFx = new Map();
   deathFx = []; alarmFlash = null; staticDirty = true;
 
@@ -534,7 +535,7 @@ function usePower(id) {
   if (id === "veilstep")  { u.moved = false; u.attacked = false; u.movedDist = 0; log(`Embercraft: ${unitName(u)} slips the judges' sight and acts again.`, "gold"); }
   addSusp(P.susp);
   computeReach(u);
-  render(); updatePanel(); showNextStory();
+  render(); updatePanel(); showNextStory(); saveGame();
 }
 
 /* ---------------- arbiters: the rigged game ---------------- */
@@ -606,15 +607,21 @@ function maybeOfferPact(h) {
   offeredPacts.add(h.id);
   storyChoice("AN ENVOY ARRIVES", h.name,
     `An envoy in ${h.name}'s colors kneels before you, eyes down. "My house is bleeding, scion. Accept our fealty: three supply each turn, and no blade of ours will ever seek yours." A pact, from the highborn, to you.`,
-    [
-      { label: "Accept their fealty (+3 supply/turn, they spare you)", apply: () => {
-          pacts.add(h.id);
-          log(`${h.name} kneels. Tribute flows.`, "gold");
-        } },
-      { label: "Send the envoy home (no pact)", apply: () => {
-          log(`${h.name}'s envoy leaves empty-handed.`);
-        } },
-    ]);
+    pactChoices(h.id), { kind: "pact", houseId: h.id });
+}
+
+function pactChoices(houseId) {
+  return [
+    { label: "Accept their fealty (+3 supply/turn, they spare you)", apply: () => {
+      const h = houseById(houseId);
+      if (!h?.alive) return;
+      pacts.add(h.id);
+      log(`${h.name} kneels. Tribute flows.`, "gold");
+    } },
+    { label: "Send the envoy home (no pact)", apply: () => {
+      log(`${houseById(houseId)?.name}'s envoy leaves empty-handed.`);
+    } },
+  ];
 }
 
 function aiHouseTurn(h) {
@@ -826,7 +833,7 @@ function endTurn() {
     }
     busy = false;
     document.getElementById("endturn").disabled = false;
-    render(); updatePanel(); showNextStory();
+    render(); updatePanel(); showNextStory(); saveGame();
   }, 120);
 }
 
@@ -1021,7 +1028,7 @@ function maybeFireEvent() {
   if (!pool.length) return;
   const e = pool[rnd(pool.length)];
   usedEvents.add(e.id);
-  storyChoice(e.kicker, e.title, e.text, e.choices);
+  storyChoice(e.kicker, e.title, e.text, e.choices, { kind: "event", eventId: e.id });
 }
 
 /* ---------------- story missives ---------------- */
@@ -1030,8 +1037,8 @@ function story(kicker, title, text) {
   storyQueue.push({ kicker, title, text });
 }
 
-function storyChoice(kicker, title, text, choices) {
-  storyQueue.push({ kicker, title, text, choices });
+function storyChoice(kicker, title, text, choices, source = null) {
+  storyQueue.push({ kicker, title, text, choices, source });
 }
 
 function storyOpen() {
@@ -1039,10 +1046,22 @@ function storyOpen() {
 }
 
 let pendingChoices = null;
+let pendingStory = null;
+function serializeStory(s) {
+  if (!s) return null;
+  const { choices, ...data } = s;
+  return data;
+}
+function restoreStory(s) {
+  const choices = s.source?.kind === "event" ? EVENTS.find(e => e.id === s.source.eventId)?.choices
+    : s.source?.kind === "pact" ? pactChoices(s.source.houseId) : null;
+  return { ...s, choices };
+}
 
 function showNextStory() {
   if (gameOver || storyOpen() || !storyQueue.length) return;
   const s = storyQueue.shift();
+  pendingStory = s;
   document.getElementById("story-kicker").textContent = s.kicker;
   document.getElementById("story-title").textContent = s.title;
   document.getElementById("story-text").textContent = s.text;
@@ -1065,16 +1084,19 @@ function showNextStory() {
 
 function resolveChoice(i) {
   const c = pendingChoices?.[i];
-  pendingChoices = null;
+  pendingChoices = null; pendingStory = null;
   document.getElementById("story").classList.add("hidden");
   if (c) c.apply();
   render(); updatePanel();
   showNextStory();
+  saveGame();
 }
 
 document.getElementById("story-ok").addEventListener("click", () => {
+  pendingStory = null;
   document.getElementById("story").classList.add("hidden");
   showNextStory();
+  saveGame();
 });
 document.getElementById("choice-a").addEventListener("click", () => resolveChoice(0));
 document.getElementById("choice-b").addEventListener("click", () => resolveChoice(1));
@@ -1085,7 +1107,7 @@ function afterAction() {
     if (!u || (u.moved && u.attacked)) { selected = null; reachCache = null; }
     else computeReach(u);
   }
-  render(); updatePanel(); showNextStory();
+  render(); updatePanel(); showNextStory(); saveGame();
 }
 
 /* ---------------- sound (tiny synth, no assets) ---------------- */
@@ -1140,7 +1162,8 @@ function saveGame() {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       v: 3, diffKey, turn, renown, defeated, playerFalls, spireUnlocked, arbStage,
       uidSeq, susp, probed, exposedTurns, freedCount, firstBlood, firstFree,
-      avatarBusyNext,
+      avatarBusyNext, powerUsed, revealedUnits: [...revealedUnits],
+      stories: [pendingStory, ...storyQueue].filter(Boolean).map(serializeStory),
       pacts: [...pacts], brokenPacts: [...brokenPacts],
       offeredPacts: [...offeredPacts], usedEvents: [...usedEvents],
       houses, units, shackled, tiles: [...tiles.values()],
@@ -1167,14 +1190,16 @@ function loadGame() {
   offeredPacts = new Set(s.offeredPacts); usedEvents = new Set(s.usedEvents);
   houses = s.houses; units = s.units; shackled = s.shackled;
   tiles = new Map(s.tiles.map(t => [key(t.q, t.r), t]));
-  selected = null; reachCache = null; storyQueue = []; pendingChoices = null;
-  gameOver = false; busy = false; powerUsed = false;
-  // fog/claim/fx state isn't persisted (cosmetic only) — a resumed trial
-  // re-fogs enemy houses until the player makes contact again.
-  revealedUnits = new Set(); claimFx = new Map(); revealFx = new Map();
+  selected = null; reachCache = null; storyQueue = (s.stories || []).map(restoreStory);
+  pendingChoices = null; pendingStory = null;
+  document.getElementById("story").classList.add("hidden");
+  gameOver = false; busy = false; powerUsed = s.powerUsed || false;
+  // Persist discovered heraldry; transient animation state starts fresh.
+  revealedUnits = new Set(s.revealedUnits || []); claimFx = new Map(); revealFx = new Map();
   deathFx = []; alarmFlash = null; staticDirty = true;
   layoutView(); render(); updatePanel();
   log("You take the field again where you left it.");
+  showNextStory();
   return true;
 }
 
@@ -1226,6 +1251,7 @@ window.addEventListener("keydown", ev => {
       document.getElementById("story-ok").click();
     return;
   }
+  if (!document.getElementById("title").classList.contains("hidden") || gameOver) return;
   if (ev.key === "e" || ev.key === "E") endTurn();
   if (ev.key === "Tab") { ev.preventDefault(); cycleUnit(); }
   if (ev.key === "Escape") { selected = null; reachCache = null; render(); updatePanel(); }
@@ -1245,7 +1271,7 @@ for (const btn of document.querySelectorAll("#diffrow .diff")) {
 document.getElementById("begin").addEventListener("click", () => {
   document.getElementById("title").classList.add("hidden");
   document.getElementById("log").innerHTML = "";
-  newGame();  // start fresh on the chosen difficulty
+  newGame(); saveGame();  // start fresh on the chosen difficulty
   sfx("story");
 });
 document.getElementById("continue").addEventListener("click", () => {
@@ -1259,7 +1285,7 @@ if (hasSave()) document.getElementById("continue").classList.remove("hidden");
 document.getElementById("again").addEventListener("click", () => {
   document.getElementById("end").classList.add("hidden");
   document.getElementById("log").innerHTML = "";
-  newGame();
+  newGame(); saveGame();
 });
 
 for (const type of ["blade", "archer", "lancer", "herald", "warden"]) {
@@ -1275,7 +1301,7 @@ for (const type of ["blade", "archer", "lancer", "herald", "warden"]) {
     me.supply -= T.cost;
     spawnUnit(0, type, ...spots[0]);
     log(`${T.name} takes the field. Ready next turn.`);
-    render(); updatePanel();
+    render(); updatePanel(); saveGame();
   });
 }
 
@@ -2104,3 +2130,6 @@ window.__cb = {
   maybeOfferPact, maybeFireEvent, storyChoice, resolveChoice, breakPact,
   saveGame, loadGame, hasSave,
 };
+
+window.render_game_to_text = () => JSON.stringify({mode:"conclave", turn, susp, renown, units, pending:pendingStory?.title, gameOver});
+window.advanceTime = () => render();

@@ -49,3 +49,9 @@ that testing and republishing can follow. This supersedes the earlier local-only
 scope. Publish the tested trial by pushing this repository to main, follow the
 shared deploy workflow and portal PR, then verify the hosted gameplay. No manual
 portal artifact copy or direct hosting deploy.
+
+- First publication: e003fa5 pushed to main; deploy workflow 45906784417 succeeded
+  and opened the canonical portal PR #235. Game CI built and linted successfully
+  but could not install Chromium because ubuntu-latest selected Ubuntu 26.04,
+  unsupported by locked Playwright 1.60.0. Pin the game CI runner to Ubuntu 24.04;
+  keep dependency versions and the shared deployment path unchanged.

@@ -1,5 +1,5 @@
-import { GATE, SEAL, EXIT, ENTRIES, same, key, living, ROLES } from './scenario.js';
-import { paths } from './tactics.js';
+import { GATE, SEAL, EXIT, ENTRIES, same, key, living, ROLES, distance } from './scenario.js';
+import { paths, sealWarden, exitBlockers } from './tactics.js';
 
 const C={ink:'#263c3b',paper:'#e6dfc7',edge:'#afa98f',water:'#6d9d9e',forest:'#82927a',gold:'#c69246',red:'#ad4b35',ally:'#274d4c'};
 export function geometry(w,h) {
@@ -45,10 +45,10 @@ function furniture(g,s,v) {
   let p=point(v,SEAL);
   g.fillStyle='#9d9c8a';g.fillRect(p.x-13,p.y+1,26,13);g.fillStyle='#ebe5d3';g.fillRect(p.x-11,p.y-4,22,6);
   if(!s.seal){circle(g,p.x,p.y-10,9,C.gold,'#f8e9ba');text(g,'✦',p.x,p.y-6,13,'#fff4cc');}
-  text(g,'SEAL',p.x,p.y+v.s*.69,8,'#6b654d','system-ui');
-  p=point(v,EXIT);circle(g,p.x,p.y,v.s*.65,'#b3c7a6','#688367');
+  text(g,!s.seal&&sealWarden(s)?'WARDED':'SEAL',p.x,p.y+v.s*.69,8,'#6b654d','system-ui');
+  p=point(v,EXIT);circle(g,p.x,p.y,v.s*.65,exitBlockers(s).length?'#d7a18b':'#b3c7a6',exitBlockers(s).length?C.red:'#688367');
   for(const dx of [-.36,.36]) {line(g,p.x+v.s*dx,p.y-15,p.x+v.s*dx,p.y+12,C.ink,2);g.fillStyle='#50766a';g.beginPath();g.moveTo(p.x+v.s*dx,p.y-15);g.lineTo(p.x+v.s*dx+10,p.y-11);g.lineTo(p.x+v.s*dx,p.y-6);g.fill();}
-  text(g,'EXIT',p.x,p.y+v.s*.67,8,C.ink,'system-ui');
+  text(g,exitBlockers(s).length?'CONTESTED':'EXIT',p.x,p.y+v.s*.67,8,C.ink,'system-ui');
   for(const c of s.captives.filter(c=>!c.freed)) {
     p=point(v,c);g.fillStyle='#ba9c74';g.fillRect(p.x-13,p.y-13,26,24);g.strokeStyle='#78634c';g.strokeRect(p.x-13,p.y-13,26,24);
     for(let dx=-8;dx<=8;dx+=8)line(g,p.x+dx,p.y-13,p.x+dx,p.y+11,'#584e3e',2);
@@ -60,7 +60,7 @@ function furniture(g,s,v) {
   }
 }
 function piece(g,u,p,s,selected,targeted) {
-  const {x,y}=p,r=Math.min(21,s*.51),ally=u.side==='ally',color=ally?C.ally:u.side==='arbiter'?'#374850':'#985542';
+  const {x,y}=p,r=Math.min(21,s*.44),ally=u.side==='ally',color=ally?C.ally:u.side==='arbiter'?'#374850':'#985542';
   g.save();
   circle(g,x,y+3,r+2,'#00000024');
   if(selected)circle(g,x,y,r+6,'#c6924628',C.gold);
@@ -79,13 +79,13 @@ function piece(g,u,p,s,selected,targeted) {
   if(u.role==='champion'){text(g,'♛',x,y-r*.4,r*.9,'#e8c477');}
   if(u.role==='arbiter'){g.fillStyle='#c8cbb9';g.fillRect(x-5,y-8,10,12);line(g,x-3,y-3,x+3,y-3,'#293b40',2);}
   g.globalAlpha=1;
-  const hw=r*1.8;g.fillStyle='#f5edda';g.fillRect(x-hw/2,y+r+3,hw,4);g.fillStyle=ally?'#497e6b':C.red;g.fillRect(x-hw/2,y+r+3,hw*u.hp/u.maxHp,4);
-  text(g,u.name.length>11?u.name.split(' ').at(-1):u.name,x,y-r-7,Math.max(8,Math.min(11,s*.29)),C.ink,'system-ui');
+  const hw=r*1.8;g.fillStyle='#f5edda';g.fillRect(x-hw/2,y+r+1,hw,3);g.fillStyle=ally?'#497e6b':C.red;g.fillRect(x-hw/2,y+r+1,hw*u.hp/u.maxHp,3);
+  text(g,({'north-jailer':'Gaoler N','south-jailer':'Gaoler S',lookout:'Lookout',sealguard:'Warden'})[u.id]||u.name,x,y+r+13,Math.max(8,Math.min(10,s*.28)),C.ink,'system-ui');
   if(u.guarding)text(g,'◆',x-r,y+4,10,C.gold);
   if(ally&&!u.acted)circle(g,x+r-1,y-r+2,3.5,'#e9bf67',C.ink);
   g.restore();
 }
-export function drawBoard(canvas,state,{hover=null,targetId=null,showThreats=true}={}) {
+export function drawBoard(canvas,state,{hover=null,targetId=null,showThreats=true,focus=null,mode=null}={}) {
   const rect=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);
   if(canvas.width!==Math.round(rect.width*dpr)||canvas.height!==Math.round(rect.height*dpr)){canvas.width=Math.round(rect.width*dpr);canvas.height=Math.round(rect.height*dpr);}
   const g=canvas.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);
@@ -97,7 +97,7 @@ export function drawBoard(canvas,state,{hover=null,targetId=null,showThreats=tru
   for(const t of state.tiles)terrain(g,t,point(v,t),v.s);
   furniture(g,state,v);
   const u=living(state).find(u=>u.id===state.selected),moves=u?.side==='ally'&&!u.moved&&!u.acted?paths(state,u):new Map();
-  for(const [k] of moves) {const [q,r]=k.split(',').map(Number),p=point(v,{q,r});hex(g,p.x,p.y,v.s*.88);g.fillStyle='#417b7a30';g.fill();}
+  for(const [k] of moves) {const [q,r]=k.split(',').map(Number),p=point(v,{q,r});hex(g,p.x,p.y,v.s*.88);g.fillStyle='#417b7a38';g.fill();g.strokeStyle='#417b7a66';g.lineWidth=1;g.stroke();}
   if(hover && moves.has(key(hover))) {
     const path=[u,...moves.get(key(hover))];g.save();g.setLineDash([4,4]);for(let i=1;i<path.length;i++){const a=point(v,path[i-1]),b=point(v,path[i]);line(g,a.x,a.y,b.x,b.y,'#386b67',2);}g.restore();
   }
@@ -106,6 +106,12 @@ export function drawBoard(canvas,state,{hover=null,targetId=null,showThreats=tru
     const a=point(v,intent.from),b=point(v,intent.to),t=intent.target&&point(v,intent.target);
     g.save();g.setLineDash([3,5]);line(g,a.x,a.y,b.x,b.y,'#ad4b3577',1.6);g.restore();
     if(t){line(g,b.x,b.y,t.x,t.y,'#ad4b35aa',1.5);circle(g,t.x,t.y,v.s*.72,'#ad4b3510','#ad4b35');}
+  }
+  if(focus){const p=point(v,focus);hex(g,p.x,p.y,v.s*.97);g.strokeStyle=C.gold;g.lineWidth=4;g.stroke();}
+  if(mode&&u){
+    const targets=living(state).filter(t=>mode==='firebrand'?t.side!=='ally'&&distance(u,t)<=2:t.side==='ally'&&t.hp<t.maxHp&&distance(u,t)<=(mode==='mend'?3:1));
+    if(mode==='firebrand'&&!state.gateOpen&&distance(u,GATE)<=2)targets.push(GATE);
+    for(const t of targets){const p=point(v,t);circle(g,p.x,p.y,v.s*.73,mode==='firebrand'?'#ad4b3520':'#417b7a25',mode==='firebrand'?C.red:'#417b7a');}
   }
   if(hover){const p=point(v,hover);hex(g,p.x,p.y,v.s*.94);g.strokeStyle=C.gold;g.lineWidth=2;g.stroke();}
   for(const unit of living(state))piece(g,unit,point(v,unit),v.s,unit.id===state.selected,unit.id===targetId);

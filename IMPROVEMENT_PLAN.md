@@ -22,10 +22,11 @@ No deployment or further scope is implied by this list.
   click and overlooked objective. Improve those cues before adding tutorials.
 - Compare completion round, deaths, embers spent, rescue outcome and moments
   of indecision between routes. The scripted oath route ends in round 5; the
-  scripted fire route ends in round 6 with losses. These are examples, not
+  scripted fire route ends in round 9. Both rescue two prisoners with six
+  survivors after the critical-play revision. These are examples, not
   difficulty targets or player performance data.
-- Decide whether the quiet route needs a negotiation obstacle or stronger
-  escort pressure. Its current clean execution can finish before inspection.
+- Watch whether round-4 inspection now gives the oath route enough escort
+  pressure. It must clear the exit while keeping the house neutral.
 - Tune enemy damage, healing, arrival timing and path visibility together.
   Keep forecasts exact and enemy targets stable within the player's turn.
 - Add clearer action feedback or stronger individual silhouettes only where
@@ -33,12 +34,12 @@ No deployment or further scope is implied by this list.
 
 ## Before a later deployment
 
-- Publish the authorized trial as the default entry; preserve the original
-  campaign link. Use live playtest feedback to decide future changes.
+- Keep the trial as the default entry and preserve the original campaign link.
+  Use live playtest feedback to decide future changes.
 - Verify Safari/Firefox and a real touch device if mobile support is desired;
   manifest still declares supportsMobile false.
 - Review the existing dependency audit findings and qualify any upgrades in
   a separate change. No dependency versions were changed for this prototype.
 - Run the full checks and verify both entries under the portal mount.
 - Publish through the standard GitHub workflow; pushing main triggers deployment.
-  The owner authorized this initial trial publication on 2026-11-26.
+  The owner authorized iterative publication on 2026-11-26.

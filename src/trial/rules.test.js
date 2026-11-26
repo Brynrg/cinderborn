@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import { createTrial, makeUnit, living, safeCaptives, GATE, key } from './scenario.js';
 import { dispatch } from './actions.js';
 import { paths, forecast, planEnemies, enemyPhase } from './tactics.js';
-import { load, save, SAVE_KEY } from './storage.js';
+import { load, save, SAVE_KEY, PREVIOUS_SAVE_KEY } from './storage.js';
 import { oathRoute, fireRoute } from '../../tests/fixtures/routes.js';
 const unit=(s,id)=>s.units.find(u=>u.id===id);
 function apply(s,a){const r=dispatch(s,a);assert.equal(r.error,null,JSON.stringify(a));return r.state;}
 function memory(){const data=new Map();return {getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)};}
 
-for(const [name,route,round,freed] of [['oath',oathRoute,5,2],['fire',fireRoute,6,0]])test(`${name} route finishes and every transaction survives a save round trip`,()=>{
+for(const [name,route,round,freed] of [['oath',oathRoute,5,2],['fire',fireRoute,9,2]])test(`${name} route finishes and every transaction survives a save round trip`,()=>{
   let s=createTrial();const storage=memory();
   for(const a of route){s=apply(s,a);assert.ok(save(storage,s));assert.deepEqual(load(storage),s);s=load(storage);}
   assert.equal(s.phase,'won');assert.equal(s.result.round,round);assert.equal(s.result.freed,freed);
@@ -79,11 +79,11 @@ test('pending decisions block gameplay and cancel cleanly; declining leaves the 
   s=apply(s,{type:'interact',unitId:'ash',kind:'gate'});assert.ok(dispatch(s,{type:'end'}).error);
   s=apply(s,{type:'choose',choice:'cancel'});assert.equal(s.pending,null);assert.equal(unit(s,'ash').acted,false);
   Object.assign(unit(s,'ash'),{q:1,r:0});s=apply(s,{type:'interact',unitId:'ash',kind:'bargain'});
-  s=apply(s,{type:'choose',choice:'decline'});assert.equal(s.bargain,'declined');assert.equal(s.seal,false);assert.equal(s.inspectionRound,6);
+  s=apply(s,{type:'choose',choice:'decline'});assert.equal(s.bargain,'declined');assert.equal(s.seal,false);assert.equal(s.inspectionRound,4);
 });
 
 test('the oath requires both living captives at the exit, not merely unlocked cages',()=>{
-  let s=createTrial();for(const a of oathRoute.slice(0,13))s=apply(s,a);
+  let s=createTrial();for(const a of oathRoute.slice(0,12))s=apply(s,a);
   assert.equal(s.captives.filter(c=>c.freed).length,2);assert.equal(safeCaptives(s).length,0);
   assert.ok(dispatch(s,{type:'interact',unitId:'ash',kind:'exit'}).error);
   unit(s,'mara').hp=0;s=apply(s,{type:'guard',unitId:'sable'});assert.equal(s.phase,'lost');assert.match(s.result.reason,/oath is broken/);
@@ -102,8 +102,8 @@ test('guarded captives cannot be freed without either permission or defeating th
   unit(s,'north-jailer').hp=0;s=apply(s,{type:'interact',unitId:'rook',kind:'mara'});assert.equal(s.captives[0].freed,true);assert.equal(s.suspicion,10);
 });
 
-test('inspection spawns at the announced round, including the bargain delay',()=>{
-  for(const arrival of [6,8]){let s=createTrial();s.inspectionRound=arrival;s.round=arrival-1;
+test('inspection spawns at the announced round, including migrated games',()=>{
+  for(const arrival of [4,8]){let s=createTrial();s.inspectionRound=arrival;s.round=arrival-1;
     s=apply(s,{type:'end'});assert.equal(s.round,arrival);assert.equal(s.inspectionArrived,true);
     assert.equal(living(s).filter(u=>u.side==='arbiter').length,2);assert.equal(s.intents.length,2);
     assert.equal(s.hostile,false);assert.equal(s.powerUsed,false);
@@ -124,4 +124,64 @@ test('corrupt or incompatible saves and unavailable storage fail safely',()=>{
   }
   assert.equal(save({setItem(){throw new Error('full');}},createTrial()),false);
   assert.equal(load({getItem(){throw new Error('blocked');}}),null);
+});
+
+test('the old solo shortcut cannot steal a warded seal or ignore a contested exit',()=>{
+  let s=createTrial();
+  for(const a of [{type:'move',unitId:'ash',to:{q:-1,r:2}},{type:'end'},
+    {type:'move',unitId:'ash',to:{q:2,r:1}},{type:'end'},
+    {type:'move',unitId:'ash',to:{q:3,r:-1}}])s=apply(s,a);
+  assert.match(dispatch(s,{type:'interact',unitId:'ash',kind:'seal'}).error,/warden/);
+  unit(s,'sealguard').hp=0;s=apply(s,{type:'interact',unitId:'ash',kind:'seal'});
+  assert.equal(s.seal,true);
+  Object.assign(unit(s,'ash'),{q:3,r:1,acted:false});
+  s.units.push(makeUnit('arbiter-1','Arbiter 2','arbiter','arbiter',4,0));
+  assert.match(dispatch(s,{type:'interact',unitId:'ash',kind:'exit'}).error,/contested/);
+  for(const u of s.units)if(u.side!=='ally')u.hp=0;
+  s=apply(s,{type:'interact',unitId:'ash',kind:'exit'});assert.equal(s.phase,'won');
+});
+
+test('steel against an Arbiter preserves cover and existing threats survive the house alarm',()=>{
+  let s=createTrial();s.gateOpen=true;
+  Object.assign(unit(s,'ash'),{q:1,r:0});
+  s.units.push(makeUnit('arbiter-0','Arbiter 1','arbiter','arbiter',1,2));
+  planEnemies(s);const locked=structuredClone(s.intents);
+  s=apply(s,{type:'attack',unitId:'sable',target:'arbiter-0'});
+  assert.equal(s.hostile,false);assert.equal(s.suspicion,0);assert.deepEqual(s.intents,locked);
+  s=apply(s,{type:'magic',kind:'firebrand',unitId:'ash',target:'south-jailer'});
+  assert.equal(s.hostile,true);assert.deepEqual(s.intents.find(i=>i.id==='arbiter-0'),locked[0]);
+});
+
+test('enemy plans reserve distinct destinations and advance when their paths remain clear',()=>{
+  const s=createTrial();s.hostile=true;s.gateOpen=true;
+  for(const u of s.units)if(!['ash','checkpoint','north-jailer'].includes(u.id))u.hp=0;
+  Object.assign(unit(s,'ash'),{q:3,r:1});
+  Object.assign(unit(s,'checkpoint'),{q:0,r:0});
+  Object.assign(unit(s,'north-jailer'),{q:-1,r:1});
+  planEnemies(s);
+  assert.equal(new Set(s.intents.map(i=>key(i.to))).size,s.intents.length);
+  assert.ok(s.intents.every(i=>i.path.length>0));
+  const plans=structuredClone(s.intents);enemyPhase(s);
+  for(const i of plans)assert.equal(key(unit(s,i.id)),key(i.to));
+});
+
+test('v1 saves migrate pending choices without rewriting the old slot or spawning an immediate inspection',()=>{
+  const storage=memory();let s=createTrial();s.version=1;s.round=7;s.inspectionRound=8;
+  s.pending={kind:'bargain',unitId:'ash'};s.embers=2;unit(s,'ash').hp=8;
+  const old=JSON.stringify(s);storage.setItem(PREVIOUS_SAVE_KEY,old);
+  const migrated=load(storage);
+  assert.equal(migrated.version,2);assert.equal(migrated.inspectionRound,8);
+  assert.deepEqual(migrated.pending,s.pending);assert.deepEqual(migrated.units,s.units);
+  assert.equal(migrated.embers,2);assert.match(migrated.migrationNotice,/preserved/);
+  assert.ok(save(storage,migrated));assert.equal(storage.getItem(PREVIOUS_SAVE_KEY),old);
+  storage.setItem(SAVE_KEY,'broken');assert.equal(load(storage),null);
+});
+
+test('completed v1 games retain their ending on migration',()=>{
+  const storage=memory();let s=createTrial();for(const a of oathRoute)s=apply(s,a);
+  s.version=1;delete s.result.honors;delete s.result.fallen;
+  storage.setItem(PREVIOUS_SAVE_KEY,JSON.stringify(s));const migrated=load(storage);
+  assert.equal(migrated.version,2);assert.deepEqual(migrated.result,s.result);
+  assert.equal(migrated.migrationNotice,undefined);
+  s.result.honors='broken';storage.setItem(SAVE_KEY,JSON.stringify(s));assert.equal(load(storage),null);
 });

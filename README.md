@@ -28,17 +28,19 @@ the portal by hand.
   round 12. Ash's death loses immediately.
 - Keep cover: present the stolen signet at the checkpoint, then speak to
   Vesper within two hexes. Her bargain gives you the seal, permission to free
-  both captives and an inspection delay, but binds you to escort Mara and
+  both captives, but binds you to escort Mara and
   Brann beside the exit. A captive's death breaks the oath.
 - Break cover: Firebrand burns the gate or hits an enemy within two hexes.
-  Taking the shrine's seal, attacking, or using Firebrand alarms the guards.
+  Defeat the Seal warden to take the shrine’s seal. Attacking house units or
+  using Firebrand alarms the guards. Steel against Arbiters preserves cover.
   At 50 suspicion, Ash is exposed and Firebrand damage rises from 5 to 7.
 - Embercraft costs one of four embers; only one spell per round. Mend heals
   7 within three hexes and adds 15 suspicion; Firebrand adds 40 suspicion.
   Iona's adjacent Bandage heals 5 without spending embers or raising suspicion.
 - Captives can also be freed after their jailer falls. Rescued allies act
   next round. A full band preserves a rescue in reserve instead of discarding it.
-- Arbiters arrive at marked beacons in round 6, or round 8 after the bargain.
+- Arbiters arrive at marked beacons in round 4, even after the bargain.
+  They contest the exit: clear every hostile within 1 hex before extracting.
   They hunt your band even with intact cover. Occupied beacons use the nearest
   free tile. Their first attack follows their displayed intent next round.
 - Enemy intentions target fixed hexes. Move away to evade. Forest absorbs
@@ -48,16 +50,21 @@ the portal by hand.
 Click portraits or figures to select. Click an enemy to inspect, then Commit
 attack. Contextual interaction buttons appear near gates, captives, Vesper,
 the seal and exit. Blue tiles show reachable ground. Action outcomes appear
-above End round, with the recent history in Field journal.
+above End round and as floating health changes, with recent history in Field
+journal. The objective banner tracks the next step; Find buttons highlight it.
+Endings award honors for rescues, intact cover and avoiding losses.
 
-Keys: **1–6** select allies, **E** end round, **Z** undo the latest uncommitted
+Keys: **1–6** select allies, **N** next ready ally, **E** end round, **Z** undo the latest uncommitted
 move, **F** fullscreen, **Escape** cancel targeting or close help/menu.
 Tab navigates controls; arrows plus Q/W navigate hexes; Enter selects.
 Sound defaults off. Play is entirely turn based; no timers run while deciding.
 
 ## Save behavior
 
-The trial uses `cinderborn-causeway-v1`. Every successful action, pending
+The trial uses `cinderborn-causeway-v2`. Existing v1 runs migrate without
+erasing their original slot; ongoing runs get at least one round of warning
+before an earlier inspection. Completed runs keep their ending.
+Every successful action, pending
 choice and result is serialized. Continue restores the same open decision,
 action availability and enemy intents. Starting a new trial asks before
 replacing an existing trial. Corrupt saves fall back to a new trial; blocked
@@ -83,7 +90,8 @@ on port 4173; keep that port free so it tests this checkout's build.
 
 `src/trial/scenario.js` owns the authored encounter and unit definitions;
 `tactics.js` owns movement, forecasts and intent execution; `actions.js` owns
-plain-data state transitions; `storage.js` validates persistence; `board.js`
+plain-data state transitions; `storage.js` validates persistence and migrates old runs; `guidance.js` supplies
+objectives and action explanations; `board.js`
 paints the map; `view.js` renders panels; `main.js` connects input and state.
 `src/main.js` and `src/styles.css` retain the original campaign.
 

@@ -1,5 +1,6 @@
 import { GATE, SEAL, EXIT, ENTRIES, MAX_ROUND, DIRS, makeUnit, key, same, distance, living, unitAt, freed, safeCaptives, log } from './scenario.js';
-import { paths, forecast, attack, walkable, enemyPhase, planEnemies } from './tactics.js';
+import { actionError } from './guidance.js';
+import { paths, forecast, attack, walkable, enemyPhase, planEnemies, sealWarden, exitBlockers } from './tactics.js';
 
 function pressure(s,n) {
   s.suspicion=Math.min(100,s.suspicion+n);
@@ -11,7 +12,9 @@ function pressure(s,n) {
 function finish(s,won,reason) {
   s.phase=won?'won':'lost';s.pending=null;s.undo=null;
   s.result={won,reason,round:s.round,freed:freed(s),safe:safeCaptives(s).length,survivors:living(s).filter(u=>u.side==='ally').length,
-    route:s.exposed?'Unmasked':s.oath?'Oathkeeper':'Seal thief'};
+    route:s.exposed?'Unmasked':s.oath?'Oathkeeper':'Seal breaker',
+    fallen:s.units.filter(u=>u.side==='ally'&&u.hp<=0).map(u=>u.name),
+    honors:won?[...(safeCaptives(s).length===2?['Both prisoners safe']:[]),...(!s.hostile?['Cover intact']:[]),...(s.units.filter(u=>u.side==='ally'&&u.hp>0).length===4+freed(s)?['No allies lost']:[])]:[]};
   log(s,reason);
 }
 export function checkOutcome(s) {
@@ -39,11 +42,11 @@ function interact(s,u,kind) {
   if(kind==='bargain' && u.id==='ash' && champ && distance(u,champ)<=2 && !s.hostile && s.bargain==='none') {
     s.pending={kind:'bargain',unitId:u.id};return true;
   }
-  if(kind==='seal' && u.id==='ash' && distance(u,SEAL)<=1 && !s.seal) {
+  if(kind==='seal' && u.id==='ash' && distance(u,SEAL)<=1 && !s.seal && !sealWarden(s)) {
     s.seal=true;s.hostile=true;pressure(s,25);spend(u);
     log(s,'The trial seal is yours. The house calls its guards. Reach the eastern exit.');return true;
   }
-  if(kind==='exit' && u.id==='ash' && same(u,EXIT) && s.seal && (!s.oath || safeCaptives(s).length===2)) {
+  if(kind==='exit' && u.id==='ash' && same(u,EXIT) && s.seal && exitBlockers(s).length===0 && (!s.oath || safeCaptives(s).length===2)) {
     spend(u);finish(s,true,s.oath?'The seal, the prisoners, and your word intact. Vesper watches your band vanish into the mist.'
       :`Ash escapes with the seal. ${freed(s)} of the two prisoners freed. The judges will remember this.`);return true;
   }
@@ -56,8 +59,8 @@ function choose(s,id) {
   if(p.kind==='gate' && id==='signet') {
     s.gateOpen=true;pressure(s,10);spend(u);log(s,'The stolen signet holds. The causeway opens. (+10 suspicion)');
   } else if(p.kind==='bargain' && id==='oath') {
-    s.oath=true;s.bargain='sworn';s.seal=true;s.gateOpen=true;s.inspectionRound=8;spend(u);
-    log(s,'Vesper gives you the seal and delays inspection until round 8. Your oath binds you: free Mara and Brann, then escort them beside the eastern exit.');
+    s.oath=true;s.bargain='sworn';s.seal=true;s.gateOpen=true;spend(u);
+    log(s,'Vesper gives you the seal. Her guards stand aside; the Arbiters will not. Escort Mara and Brann beside the exit, then clear a road out.');
   } else if(p.kind==='bargain' && id==='decline') {
     s.bargain='declined';log(s,'You promise nothing. The seal remains at the northern shrine.');
   } else return false;
@@ -82,19 +85,24 @@ function magic(s,u,a) {
   s.embers--;s.powerUsed=true;spend(u);return true;
 }
 function endRound(s) {
+  const before=living(s).filter(u=>u.side==='ally').map(u=>({id:u.id,name:u.name,hp:u.hp}));
+  const losses=()=>before.map(u=>{const after=s.units.find(x=>x.id===u.id);return after.hp<=0?`${u.name} fell`:after.hp<u.hp?`${u.name} −${u.hp-after.hp} HP`:null;}).filter(Boolean);
+  let arrival=false;
   enemyPhase(s);checkOutcome(s);if(s.phase!=='playing')return;
   if(s.round>=MAX_ROUND) {finish(s,false,'The twelfth bell sounds. The judges seal every road out.');return;}
   s.round++;s.powerUsed=false;
   for(const u of living(s).filter(u=>u.side==='ally')) {u.moved=false;u.acted=false;u.guarding=false;}
   if(!s.inspectionArrived && s.round>=s.inspectionRound) {
-    s.inspectionArrived=true;
+    s.inspectionArrived=true;arrival=true;
     for(let i=0;i<ENTRIES.length;i++) {
       const spawn=[...s.tiles].filter(t=>walkable(s,t)&&!unitAt(s,t)).sort((a,b)=>distance(a,ENTRIES[i])-distance(b,ENTRIES[i]))[0];
       if(spawn)s.units.push(makeUnit(`arbiter-${i}`,'Arbiter '+(i+1),'arbiter','arbiter',spawn.q,spawn.r));
     }
-    log(s,'Inspection arrives at the northern beacons. The Arbiters hunt your band.');
+    log(s,'Inspection arrives at the marked beacons. The Arbiters block the eastern escape.');
   }
-  planEnemies(s);log(s,`Round ${s.round}. Read the enemy intentions before committing.`);
+  planEnemies(s);
+  const report=losses();
+  log(s,`Round ${s.round}. ${arrival?'Inspection has arrived! ':''}${report.length?report.join(' · ')+'. ':'No allies hurt. '}Read the next enemy strikes.`);
 }
 
 // All successful actions are plain-data transactions; the UI saves the returned state.
@@ -115,7 +123,7 @@ export function dispatch(state,a) {
       Object.assign(u,a.to);u.moved=true;ok=true;keepUndo=true;
     } else if(a.type==='attack' && !u.acted) {
       const e=living(s).find(x=>x.id===a.target);
-      if(e&&forecast(s,u,e)) {s.hostile=true;pressure(s,15);ok=attack(s,u,e);}
+      if(e&&forecast(s,u,e)) {if(e.side==='house'){s.hostile=true;pressure(s,15);}ok=attack(s,u,e);}
     } else if(a.type==='guard' && !u.acted) {u.guarding=true;spend(u);log(s,`${u.name} guards: −2 incoming damage until next round.`);ok=true;}
     else if(a.type==='bandage' && u.role==='healer' && !u.acted) {
       const ally=living(s).find(x=>x.id===a.target);
@@ -123,8 +131,8 @@ export function dispatch(state,a) {
     } else if(a.type==='interact'&&!u.acted)ok=interact(s,u,a.kind);
     else if(a.type==='magic')ok=magic(s,u,a);
   }
-  if(!ok)return {state,error:'That action is unavailable. Check range, actions, or the objective condition.'};
-  if(!wasHostile && s.hostile)planEnemies(s);
+  if(!ok)return {state,error:actionError(state,a)};
+  if(!wasHostile && s.hostile)planEnemies(s,state.intents);
   if(!keepUndo)s.undo=null;
   s.actions++;checkOutcome(s);
   return {state:s,error:null};

@@ -1,4 +1,4 @@
-import { DIRS, GATE, same, distance, key, tileAt, unitAt, living, log } from './scenario.js';
+import { DIRS, GATE, EXIT, same, distance, key, tileAt, unitAt, living, log } from './scenario.js';
 
 export function walkable(s, t) {
   const tile=tileAt(s,t);
@@ -52,31 +52,41 @@ export function attack(s,a,b) {
 }
 export function enemies(s) { return living(s).filter(u => u.side==='arbiter'||(u.side==='house'&&s.hostile)); }
 
+export const sealWarden = s => living(s).find(u=>u.id==='sealguard');
+export const exitBlockers = s => enemies(s).filter(u=>distance(u,EXIT)<=1);
+
 // Intent targets a tile, not a homing unit. Moving away can evade a telegraphed strike.
-export function planEnemies(s) {
-  const allies=living(s).filter(u=>u.side==='ally');
-  s.intents=[];
-  for(const u of enemies(s)) {
-    const target=[...allies].sort((a,b)=>distance(u,a)-distance(u,b)||a.hp-b.hp||a.id.localeCompare(b.id))[0];
-    if(!target) continue;
-    let to={q:u.q,r:u.r}, path=[];
-    if(!inRange(s,u,target)) {
-      const candidates=[...paths(s,u)].map(([,p])=>({p,t:p.at(-1)}));
-      // A full distance field avoids getting stuck behind a detour.
-      const field=new Map([[key(target),0]]), queue=[{q:target.q,r:target.r}];
-      while(queue.length) {
-        const t=queue.shift();
-        for(const [dq,dr] of DIRS) {
-          const n={q:t.q+dq,r:t.r+dr};
-          if(field.has(key(n))||!walkable(s,n)) continue;
-          field.set(key(n),field.get(key(t))+1); queue.push(n);
-        }
-      }
-      candidates.sort((a,b)=>(field.get(key(a.t))??999)-(field.get(key(b.t))??999)||a.p.length-b.p.length);
-      if(candidates[0]) {to=candidates[0].t;path=candidates[0].p;}
+function distanceField(s,u,target) {
+  const field=new Map([[key(target),0]]),queue=[{q:target.q,r:target.r}];
+  while(queue.length){
+    const t=queue.shift();
+    for(const [dq,dr] of DIRS){
+      const n={q:t.q+dq,r:t.r+dr},occupant=unitAt(s,n);
+      if(field.has(key(n))||!walkable(s,n)||(occupant&&occupant.id!==u.id))continue;
+      field.set(key(n),field.get(key(t))+1);queue.push(n);
     }
-    const projected={...u,...to};
-    s.intents.push({id:u.id,from:{q:u.q,r:u.r},to,path,target:inRange(s,projected,target)?{q:target.q,r:target.r}:null});
+  }
+  return field;
+}
+export function planEnemies(s,locked=[]) {
+  const projectedState=structuredClone(s),allies=living(s).filter(u=>u.side==='ally');
+  s.intents=locked.filter(i=>enemies(s).some(u=>u.id===i.id)).map(i=>structuredClone(i));
+  for(const intent of s.intents)Object.assign(projectedState.units.find(u=>u.id===intent.id),intent.to);
+  for(const u of enemies(projectedState)){
+    if(s.intents.some(i=>i.id===u.id))continue;
+    const choices=allies.map(target=>({target,field:distanceField(projectedState,u,target)}));
+    const cost=c=>inRange(projectedState,u,c.target)?0:(c.field.get(key(u))??999);
+    choices.sort((a,b)=>cost(a)-cost(b)||a.target.hp-b.target.hp||a.target.id.localeCompare(b.target.id));
+    const choice=choices[0];if(!choice)continue;
+    const {target,field}=choice;
+    let to={q:u.q,r:u.r},path=[];
+    if(!inRange(projectedState,u,target)){
+      const candidates=[{p:[],t:to},...[...paths(projectedState,u)].map(([,p])=>({p,t:p.at(-1)}))];
+      candidates.sort((a,b)=>(field.get(key(a.t))??999)-(field.get(key(b.t))??999)||a.p.length-b.p.length);
+      to=candidates[0].t;path=candidates[0].p;
+    }
+    s.intents.push({id:u.id,from:{q:u.q,r:u.r},to,path,target:inRange(s,{...u,...to},target)?{q:target.q,r:target.r}:null});
+    Object.assign(u,to); // Following enemies reserve different destinations.
   }
 }
 export function enemyPhase(s) {

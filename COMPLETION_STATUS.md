@@ -1,37 +1,36 @@
 # Cinderborn status
 
-Updated 2026-11-26. Local version 0.4.0-trial.1, based on d29d745.
-This is Cinderborn, not the inherited template described by the old status file.
+Updated 2026-11-26. Version 0.4.0-trial.2; critical playtest revision.
 
-- **Pass:** a complete local Ashen Causeway trial at the default entry, with
-  four starting allies, two rescues, a champion bargain, cover/Embercraft,
-  announced inspection, exact combat forecasts, fixed target intentions,
-  a seal objective, extraction and loss states.
-- **Pass:** independent validated trial saves, pending-choice and result
-  continuation, used-action retention, restart confirmation and storage-error feedback.
-- **Pass:** original campaign retained at `conclave.html`; pending/resolved
-  event and used-power save regressions pass. Its board sizing and persistent
-  End Turn control pass repeated desktop resizing.
-- **Pass:** 16 rule/persistence tests and the current browser journey suite,
-  including both complete routes through normal UI controls. See progress.md
-  for the final check receipt.
-- **Not Proven:** owner enjoyment, route balance, actual-phone usability,
-  other browser engines. Publication through the standard GitHub pipeline was
-  authorized on 2026-11-26; verify its resulting workflow and live build.
+- **Pass:** the solo round-4 shortcut is closed. The shrine requires defeating
+  its warden or gaining Vesper’s seal. Inspection arrives in round 4 and nearby
+  hostiles prevent extraction. Steel against Arbiters keeps house cover intact.
+- **Pass:** enemy plans reserve destinations and follow reachable paths; their
+  declared target tiles remain fixed throughout the player’s turn.
+- **Pass:** objective links, explicit activation budgets, Next ready selection,
+  contextual explanations, exact health forecasts, damage/heal feedback,
+  survivor honors, desktop layout and a scrollable narrow layout.
+- **Pass:** v1 saves migrate into v2 without modifying the original slot.
+  Pending choices, used actions, damaged units and completed endings persist.
+  Original Conclave remains available at `conclave.html` with separate saves.
+- **Pass:** 21 rule/persistence tests and 15 browser tests, syntax validation,
+  production build and relative-path lint. Normal-control journeys complete the
+  oath route in round 5 and the combat route in round 9, each with six survivors
+  and both prisoners rescued. These are demonstrated solutions, not minimums.
+- **Not Proven:** owner enjoyment, exhaustive balance, actual-phone usability,
+  Safari/Firefox. Mobile support remains false in the manifest.
 
-## Structure
+## Publication
 
-Vanilla JavaScript, HTML and CSS, built with the locked Vite 5 toolchain.
-Two HTML entries, relative Vite base, no runtime SDK or external assets.
-New trial rules/state are separated from canvas/DOM; original code remains
-in src/main.js. Tests use Node's built-in runner and the existing Playwright
-package. The historically named typecheck command checks JavaScript syntax.
+Owner authorized testing and republication through GitHub. Push this release
+once to main, then verify source CI, the shared deploy workflow, auto-merging
+portal PR and live manifest/assets. Never hand-copy artifacts into the portal.
+The final live receipt is recorded separately after deployment so that writing
+it does not trigger another publication.
 
-## Known constraints
+## Structure and limits
 
-One small authored scenario; deterministic enemies; no progression or
-campaign integration. The clean bargain route can finish before inspection;
-owner feedback should decide if it needs more pressure. Storage is local to
-browser/origin and is not cloud synced. Invalid saves recover with a fresh run.
-The dependency audit findings present during npm ci were not addressed in
-this gameplay change. See IMPROVEMENT_PLAN.md for bounded next steps.
+Vanilla JavaScript, HTML and CSS on the locked Vite toolchain. Two entries,
+relative asset paths, no runtime packages or external artwork. Deterministic,
+one-encounter tactics with six active allies maximum and browser-local saves.
+The existing dependency audit findings remain outside this gameplay change.

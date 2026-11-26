@@ -5,8 +5,8 @@
   "framework": "vite",
   "category": "strategy",
   "supportsMobile": false,
-  "version": "0.4.0-trial.1",
-  "emoji": "\ud83d\udd25",
+  "version": "0.4.0-trial.2",
+  "emoji": "🔥",
   "entry": "index.html",
   "buildCommand": "npm run build",
   "repo": "Brynrg/cinderborn"

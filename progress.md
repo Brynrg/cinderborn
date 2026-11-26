@@ -55,3 +55,46 @@ portal artifact copy or direct hosting deploy.
   but could not install Chromium because ubuntu-latest selected Ubuntu 26.04,
   unsupported by locked Playwright 1.60.0. Pin the game CI runner to Ubuntu 24.04;
   keep dependency versions and the shared deployment path unchanged.
+
+## Critical play and revision — 2026-11-26
+
+Owner requested a critical playthrough, improvements to confusing/easy/boring
+parts, tests, and republication through GitHub. Starting from clean 8482b34.
+
+- Live UI playthrough: Ash alone crossed the lower bridge, took the seal beside
+  its living warden, then extracted in round 4 with 3 HP. No other ally moved,
+  no attack or spell was used, and the inspection never affected play.
+- The narrow live viewport also separated the board from commands by a long
+  scroll; empty objective hexes offered generic movement errors, and a unit's
+  spent action state did not suggest selecting another ready ally.
+- Revision: protect the shrine until its warden is defeated (Vesper's bargain
+  still bypasses it); move inspection to round 4 and position it to contest
+  the escape; require a clear exit. Steel against Arbiters preserves house
+  neutrality, so the bargain route gains a tactical finish without forcing fire.
+- Preserve old trial saves via migration into a separate v2 slot; never erase
+  the original trial or Conclave slot. Existing runs get advance warning of
+  any earlier inspection, and terminal saves retain their ending.
+
+- Fixed enemy destination conflicts using projected occupancy; preserve existing
+  Arbiter intent when house hostility is first triggered. Clear paths now advance
+  while player movement can still deliberately block or evade a declared strike.
+- Added objective Find links, contextual map inspection, specific failure reasons,
+  explicit move/action budgets, N / Next ready, exact resulting HP in forecasts,
+  spell target highlights, floating damage/healing, round damage summaries and
+  ending honors. No additional pop-up tutorial or forced end-round confirmation.
+- Moved mission guidance above the map so spell actions fit on laptop screens.
+  Fixed a narrow-screen portrait row clipping under the cover panel; commands/map
+  navigation links and a normal-flow End round avoid overlapping controls.
+- Normal-control browser journeys complete oath in round 5 (cover intact, both
+  prisoners safe, six survivors) and fire in round 9 (four embers used, both safe,
+  six survivors). The latter includes rescue combat, healing and warden defeat.
+- Release checks: Pass — 21 Node tests, 15 Playwright tests, 13-file syntax check,
+  production build, relative-path lint. Regressions cover the old solo exploit,
+  contested extraction, steel preserving cover, locked enemy intents, distinct
+  enemy destinations, v1 pending/terminal migration and corrupt new ending fields.
+- Visually inspected desktop, 1280x720 six-member roster, inspection threats,
+  combat feedback, ending honors and corrected 390px narrow layout. Skill client
+  used during iterations and on the release candidate. No browser errors.
+- Version 0.4.0-trial.2. Publication authorized; follow the canonical GitHub
+  pipeline and confirm both routes on the resulting production build. Owner
+  enjoyment and actual-device usability remain open playtest questions.

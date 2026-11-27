@@ -1,6 +1,6 @@
 # Cinderborn status
 
-Updated 2026-11-26. Version 0.6.0-campaign.1; four-chapter campaign expansion.
+Updated 2026-11-26. Version 0.6.1-campaign.1; critical campaign pacing and combat revision.
 
 - **Pass:** four connected regions: Ashen March, Cinderreach, Veiled Fen and
   Crownless Citadel. Main quests, house champions, three new main bosses,
@@ -8,16 +8,16 @@ Updated 2026-11-26. Version 0.6.0-campaign.1; four-chapter campaign expansion.
 - **Pass:** normal-input browser journeys complete both a steel/worker/ally
   route to the covenant and a flame/house route to the crown, retaining their
   progression and endings on reload. Both complete without deaths using active
-  defense, equipment and healing; this is not an exhaustive balance result.
-- **Pass:** six new equipment rewards, mutually exclusive crafted weapons,
+  defense and upgraded equipment; this is not an exhaustive balance result.
+- **Pass:** six equipment rewards, an initial crafted-weapon choice and paid second craft,
   Cinderwake and Nameward, seven talent ranks, Iona's family quest, moonwell
   healing, Oryn's banner, the covenant bell puzzle and recovered journal records.
 - **Pass:** three ending rules and reactive epilogues. Covenant requires three
-  independent allies. Postgame exploration and the enraged First Judge echo.
+  independent allies. Postgame exploration, three rotating First Judge echo patterns and paid talent retraining.
 - **Pass:** existing RPG save migration, regional enemy persistence, cross-region
   return travel, correct-hearth revival, quest gates and reward deduplication.
-- **Pass:** 66 rule/persistence tests and 29 built-browser tests; syntax check of
-  33 JavaScript files, production build, relative-path lint and diff check.
+- **Pass:** 74 rule/persistence tests and 29 built-browser tests; syntax check of
+  35 JavaScript files, production build, relative-path lint and diff check.
 - **Pass:** procedural world, chapter HUD, boss warnings, choices, journal and
   endings inspected at desktop sizes; 390px map/HUD and seven-slot ability bar
   checked for horizontal overflow. Bundled web-game client checked separately.
@@ -28,14 +28,22 @@ Updated 2026-11-26. Version 0.6.0-campaign.1; four-chapter campaign expansion.
 
 ## Playtest fixes
 
-The first expansion route reached high levels too early; new quest and encounter
-XP was reduced to preserve growth through the later chapters. Actual movement
-checks caught path edges clipping scenery between clear grid centers. A pursuer
-could block revival after regional travel was added; recovery now clears pursuit
-before returning to the correct hearth. Chapter transitions ignore a harmless
-combat cooldown when no enemy remains, while active pursuit still blocks travel.
-Completed side quests fall back to the main objective; ready rewards use question
-marks. Forbidden-fire suspicion also attracts unwarded new sentinels.
+Two complete baseline campaigns exposed repeated boss patterns and very short
+later fights. Fully geared steel could beat the echo without defending. The
+Bailiff now marks lanes, the Archivist uses hollow rings, and the Judge chains
+two attacks before an opening. New-region bosses can threaten ranged attackers.
+Their increased health is migrated proportionally in old saves, including cached
+regions. All three echo patterns reject a passive level-20 steel strategy.
+
+Two revised active campaigns finish without deaths, while both passive echo
+attempts lose. The final Judge lasts about 17–20 seconds in the tested strategies,
+up from 10–12 seconds. This is bounded play evidence, not exhaustive balance.
+Browser coverage also switches to the second crafted weapon, redistributes
+talents, completes all three echoes and retains the build/record on reload.
+
+Kargan and Torin join their cleared boss areas for chapter decisions. Banner and
+flower deliveries work even if collected before accepting the optional quest.
+Warnings, rings, lanes, chapter handoffs and trial briefings are visually checked.
 
 ## Publication
 

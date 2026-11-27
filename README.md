@@ -33,7 +33,10 @@ Levels grant talent points. Equip weapons and armor in Character. Read enemy
 red attack areas, move or Veilstep out before impact, and manage regenerating
 focus and cooldowns. Bosses brace for reduced damage, then expose a 2.4-second
 opening after each attack that takes 50% extra damage. Their marked sweeps and
-eruptions alternate; the Arbiter speeds up below half health.
+eruptions alternate in the March; the Arbiter speeds up below half health.
+Later encounters add furnace lanes to sidestep and hollow tides with a safe
+center. The First Judge attacks twice before exposing its recovery window.
+Campaign bosses can mark a ranged attacker, so distance alone is not immunity.
 
 Click a side quest in the tracker or journal to follow its next objective and
 turn-in. Rescuing Mara improves Veilstep to 8 focus and a 2.6-second cooldown;
@@ -59,7 +62,10 @@ Recovered records remain readable in the journal. Six new equipment rewards,
 Cinderwake's area attack, Nameward's five-second shield, and seven ranks per
 combat talent extend build progression. Chapters carry their decisions into a
 personalized epilogue. After the ending, finish old promises or challenge the
-First Judge's enraged echo repeatedly. The original story choice stays saved.
+First Judge's three rotating echo trials. Sable at the Citadel can refund your
+talent ranks for 40 crowns; Edda can forge your other weapon for 100 crowns.
+The original story choice stays saved. Kargan and Torin meet you beside their
+defeated bosses, and optional quest items can be delivered on the first visit.
 
 ## Persistence and scope
 

@@ -20,19 +20,18 @@ export async function campaignRoute(page,route='accord',capture=async()=>{}){
  const good=route==='accord',build=good?'steel':'fire';
  await storyRoute(page,good?'oath':'defy');await ui(page,'choice:continue-forge');assert.equal((await game(page)).zone,'forge');
  await capture('forge-arrival');await interact(page,'kargan','forge-begin');
- if(good)await npc(page,'garen',{x:1470,y:1320},'oryn-begin');
  for(const id of ['crate-a','vent-west','ore-b','vent-east','crate-c','ore-c','vent-south','crate-b','ore-a'])await interact(page,id);
  await settle(page);await ui(page,'map');await ui(page,'travel:forge-hearth');await interact(page,'edda','temper-'+(good?'forged':'focus'));await interact(page,'anja','supplies-reward');await equipBest(page,build);
  if(good){await go(page,{x:2120,y:1350});await fight(page,'red-captain');await interact(page,'oryn-banner');await npc(page,'garen',{x:1470,y:1320},'oryn-mercy');}
  await interact(page,'forge-letter');await interact(page,'forge-waystone');await capture('forge-works');
- await go(page,{x:2140,y:820});await fight(page,'bailiff');await settle(page);await ui(page,'map');await ui(page,'travel:forge-hearth');
+ await go(page,{x:2140,y:820});await fight(page,'bailiff');await settle(page);
  await interact(page,'kargan','forge-'+(good?'workers':'house'));await capture('forge-complete');await equipBest(page,build);
  await interact(page,'forge-fen');assert.equal((await game(page)).zone,'fen');await capture('fen-arrival');await interact(page,'torin','fen-begin');
  for(const id of ['record-a','record-b'])await interact(page,id);
  if(good){for(const id of ['bell-low','bell-high','bell-mid','fen-reliquary'])await interact(page,id);}
  await interact(page,'record-c');await interact(page,'fen-waystone');await capture('fen-archive');
- if(good){await npc(page,'elara',{x:1540,y:1290},'syla-begin');for(const id of ['moon-c','moon-b','moon-a','fen-memory'])await interact(page,id);await npc(page,'elara',{x:1540,y:1290},'syla-reward');await settle(page);await ui(page,'map');await ui(page,'travel:fen-hearth');await interact(page,'iona-fen','medicine-reward');}
- await equipBest(page,build);await interact(page,'fen-waystone');await go(page,{x:2150,y:820});await fight(page,'archivist');await settle(page);await ui(page,'map');await ui(page,'travel:fen-hearth');await interact(page,'torin','archive-'+(good?'publish':'conceal'));await capture('fen-complete');
+ if(good){for(const id of ['moon-c','moon-b','moon-a','fen-memory'])await interact(page,id);await npc(page,'elara',{x:1540,y:1290},'syla-reward');await settle(page);await ui(page,'map');await ui(page,'travel:fen-hearth');await interact(page,'iona-fen','medicine-reward');}
+ await equipBest(page,build);await interact(page,'fen-waystone');await go(page,{x:2150,y:820});await fight(page,'archivist');await settle(page);await interact(page,'torin','archive-'+(good?'publish':'conceal'));await capture('fen-complete');
  await interact(page,'fen-citadel');assert.equal((await game(page)).zone,'citadel');await interact(page,'rook-citadel','close');await page.keyboard.press('Digit6');assert.ok((await game(page)).player.shield>0);await capture('citadel-arrival');
  for(const id of ['beacon-iron','beacon-oath','citadel-letter','beacon-moon'])await interact(page,id);
  await interact(page,'citadel-waystone');await equipBest(page,build);await capture('citadel-before-judge');

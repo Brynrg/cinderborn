@@ -26,10 +26,10 @@ export const FOES={
  wisp:{name:'Fen lantern',hp:105,atk:22,speed:85,range:210,xp:36,coins:16,color:'#a5d9cb',kind:'spirit'},
  stalker:{name:'Reed stalker',hp:230,atk:29,speed:130,range:70,xp:63,coins:32,color:'#87a594',kind:'beast'},
  champion:{name:'Hollow champion',hp:280,atk:38,speed:95,range:75,xp:66,coins:30,color:'#b0b3be',kind:'warden'},
- bailiff:{name:'The Brass Bailiff',hp:740,atk:76,speed:70,range:125,xp:114,coins:65,color:'#c79654',kind:'boss',sweep:'Furnace sweep',blast:'Slagfall'},
+ bailiff:{name:'The Brass Bailiff',hp:1100,atk:76,speed:70,range:125,xp:114,coins:65,color:'#c79654',kind:'boss',sweep:'Furnace sweep',blast:'Slagfall'},
  captain:{name:'The Red Captain',hp:480,atk:57,speed:95,range:110,xp:87,coins:45,color:'#b26f6b',kind:'boss',sweep:'Blood arc',blast:'Marked for debt'},
- archivist:{name:'The Drowned Archivist',hp:1060,atk:94,speed:75,range:125,xp:156,coins:90,color:'#9bbdca',kind:'boss',sweep:'Tide of names',blast:'Drowning memory'},
- judge:{name:'The First Judge',hp:1600,atk:112,speed:90,range:135,xp:228,coins:160,color:'#e1cfa1',kind:'boss',sweep:'Crownfall',blast:'Sentence of ash'},
+ archivist:{name:'The Drowned Archivist',hp:1600,atk:94,speed:75,range:125,xp:156,coins:90,color:'#9bbdca',kind:'boss',sweep:'Tide of names',blast:'Drowning memory'},
+ judge:{name:'The First Judge',hp:2200,atk:112,speed:90,range:135,xp:228,coins:160,color:'#e1cfa1',kind:'boss',sweep:'Crownfall',blast:'Sentence of ash'},
  wolf:{name:'Ash wolf',hp:30,atk:8,speed:105,range:55,xp:18,coins:7,color:'#b6ab96',kind:'beast'},
  raider:{name:'Road reaver',hp:46,atk:10,speed:90,range:60,xp:24,coins:10,color:'#9d6656',kind:'blade'},
  jailer:{name:'Conclave jailer',hp:80,atk:12,speed:80,range:66,xp:45,coins:18,color:'#9a9f9e',kind:'warden'},
@@ -87,3 +87,9 @@ export const skillCooldown=(s,id)=>id==='dash'&&s.quests.mara?2.6:SKILLS.find(k=
 export const potionHeal=s=>s.quests.brann?65:50;
 
 export const skillUnlocked=(s,id)=>{const k=SKILLS.find(k=>k.id===id);return !k?.unlock||!!s.campaign?.[k.unlock];};
+
+export const ECHO_TRIALS=[
+ {name:'Trial of the Crown',pattern:['circle','lane'],detail:'Two strikes: leave the sweep, then sidestep the lane.'},
+ {name:'Trial of Memory',pattern:['ring','circle'],detail:'Step into the hollow ring, then escape your marked ground.'},
+ {name:'Trial of the Furnace',pattern:['lane','ring'],detail:'Sidestep the lane, then move into the hollow ring.'}
+];

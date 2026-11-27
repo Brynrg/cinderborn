@@ -264,3 +264,38 @@ Main play should feel like adventuring through the world, not commanding a board
 - Added regression coverage for death while pursued, new-region fire suspicion
   respecting quest wards, and completed side tracking returning to the main story.
 - Version 0.6.0-campaign.1. GitHub publication and production verification next.
+
+## 2026-11-26 — Full-campaign critical playthrough
+
+- Owner explicitly requested two full playthroughs, improvements, tests and
+  republication through GitHub. Baseline: clean main 9574149; live manifest
+  0.6.0-campaign.1 matched that commit.
+- Completed both campaign routes through normal browser controls and captured
+  boss warnings, choices, progression and input counts. Neither route needed
+  Mend or draughts. Later bosses lasted about 7–12 simulated seconds and shared
+  the same sweep/marked-circle pattern. Fully geared steel Ash beat the echo
+  by auto-attacking without defending; the flame build died in that experiment.
+- Changes in progress: distinct furnace lanes, hollow tides and a two-strike
+  Judge; ranged boss pressure; longer late encounters with proportional save
+  migration. Kargan and Torin join the cleared boss area for chapter decisions.
+  Rotating echo patterns, talent retraining and a second crafted weapon provide
+  reasons to experiment after the ending.
+
+### Critical pass outcomes
+
+- Completed both revised campaigns with normal controls and zero deaths. The
+  final Judge takes about 17–20 seconds versus 10–12 seconds in the baseline.
+  Both passive echo attempts now lose; a level-20 steel regression loses against
+  every echo pattern. Active play remains achievable on steel and flame builds.
+- Implemented lanes, hollow rings, chained strikes and ranged pressure, with
+  matching collision, warning text and rendering. Existing saves retain boss
+  damage proportions, dead encounters and progress in active/cached regions.
+- Removed main-story return trips by moving Kargan/Torin to their cleared bosses.
+  Optional banner/flower items can be delivered before accepting their quests.
+- Added three rotating echoes, 40-crown talent redistribution and a 100-crown
+  second weapon. Browser tests switch builds, finish all three and reload records.
+- Release candidate: 0.6.1-campaign.1. Pass: 74 rules tests, 29 browser tests,
+  syntax, production build, relative-path lint and diff check. Visually inspected
+  final lanes, hollow rings, echo briefing and bundled-client screenshot/state.
+  Canonical GitHub deployment/live verification follow; receipt stored separately
+  after publication. Owner enjoyment remains Not Proven.

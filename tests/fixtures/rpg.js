@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {clearance,inDanger} from '../../src/rpg/telegraphs.js';
 import {blocked} from '../../src/rpg/world.js';
 export const game=page=>page.evaluate(()=>JSON.parse(window.render_game_to_text()));
 export const advance=(page,ms)=>page.evaluate(ms=>window.advanceTime(ms),ms);
@@ -20,9 +21,9 @@ export async function fight(page,id){
   if(s.player.hp<s.player.maxHp*.35)await page.keyboard.press('KeyQ');
   if(s.zone!=='march'&&s.campaign?.archiveChoice&&e.mark&&s.player.hp<s.player.maxHp*.5&&!s.cooldowns.aegis&&s.player.energy>=28)await page.keyboard.press('Digit6');
   const boss=e.kind==='boss'||['warden','commander'].includes(e.type);if(boss&&page.captureCombat)await page.captureCombat(s,e);
-  if(boss&&e.mark&&Math.hypot(s.player.x-e.mark.x,s.player.y-e.mark.y)<e.mark.r+20){
-   const options=[['KeyD',1,0],['KeyA',-1,0],['KeyS',0,1],['KeyW',0,-1]].map(([key,dx,dy])=>{let reach=0;for(let d=8;d<=160;d+=8){if(blocked(s.player.x+dx*d,s.player.y+dy*d,14,s.zone))break;reach=d;}return {key,score:Math.hypot(s.player.x+dx*reach-e.mark.x,s.player.y+dy*reach-e.mark.y)};}).sort((a,b)=>b.score-a.score),key=options[0].key;
-   await page.keyboard.down(key);if(!s.cooldowns.dash&&s.player.energy>=12)await page.keyboard.press('Digit4');await advance(page,250);await page.keyboard.up(key);continue;
+  if(boss&&e.mark&&inDanger(s.player,e.mark,20)){
+   const options=[['KeyD',1,0],['KeyA',-1,0],['KeyS',0,1],['KeyW',0,-1]].map(([key,dx,dy])=>{let score=-Infinity;for(let d=8;d<=160;d+=8){const p={x:s.player.x+dx*d,y:s.player.y+dy*d};if(blocked(p.x,p.y,14,s.zone))break;score=Math.max(score,clearance(p,e.mark,20));}return {key,score};}).sort((a,b)=>b.score-a.score),key=options[0].key;
+   await page.keyboard.down(key);if(e.mark.shape!=='ring'&&!s.cooldowns.dash&&s.player.energy>=12)await page.keyboard.press('Digit4');await advance(page,250);await page.keyboard.up(key);continue;
   }
   if(!s.auto&&!e.mark){const v=s.camera;await page.locator('#world').click({position:{x:(e.x-v.cx)*v.scale+v.w/2,y:(e.y-v.cy)*v.scale+v.h/2}});}
   if(s.campaign?.forgeChoice&&!s.cooldowns.nova&&s.player.energy>=55&&Math.hypot(e.x-s.player.x,e.y-s.player.y)<200&&(boss?e.recovery>0:s.enemies.filter(a=>!a.dead&&Math.hypot(a.x-s.player.x,a.y-s.player.y)<220).length>=2))await page.keyboard.press('Digit5');

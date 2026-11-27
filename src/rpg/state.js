@@ -1,8 +1,10 @@
 import {CAMP,SPAWNS,FOES,ITEMS,stats,levelCost,clamp,WORLD,TALENT_CAP} from './data.js';
 import {REGIONS,regionData,allNodes,newEnemies,campaignDefaults,unlocked} from './regions.js';
+import {validMark} from './telegraphs.js';
+const savedMaxHp=(type,version)=>version===3?FOES[type].hp:version===2?({bailiff:740,archivist:1060,judge:1600}[type]||FOES[type].hp):({warden:165,commander:235}[type]||FOES[type].hp);
 export const SAVE_KEY='cinderborn-rpg-v1';
 export function createGame(){return {
- version:1,encounterVersion:2,zone:'march',regions:{},campaign:campaignDefaults(),mode:'playing',time:0,player:{...CAMP,hp:100,energy:80,level:1,xp:0,coins:0,potions:3,face:0,dash:0,shield:0},
+ version:1,encounterVersion:3,zone:'march',regions:{},campaign:campaignDefaults(),mode:'playing',time:0,player:{...CAMP,hp:100,energy:80,level:1,xp:0,coins:0,potions:3,face:0,dash:0,shield:0},
  gear:{weapon:'worn',armor:'cloak'},bag:['worn','cloak'],talents:{steel:0,flame:0,resolve:0},points:0,
  quests:{metRook:false,herbs:false,herbsDone:false,bounty:false,bountyKills:0,bountyRuns:0,oath:false,defiant:false,mara:false,brann:false,seal:false,complete:false},
  collected:[],waystones:['campfire'],checkpoint:'campfire',heat:0,heatSpawned:false,cooldowns:{slash:0,fire:0,mend:0,dash:0,potion:0,nova:0,aegis:0},
@@ -41,7 +43,7 @@ export function snapshot(s){const out=structuredClone(s);out.path=[];out.auto=fa
 export function save(storage,s){try{storage.setItem(SAVE_KEY,JSON.stringify(snapshot(s)));return true;}catch{return false;}}
 const number=(v,min,max)=>Number.isFinite(v)&&v>=min&&v<=max;
 export function validSave(s){
- if(!s||(s.encounterVersion!==undefined&&s.encounterVersion!==2)||s.version!==1||!['playing','fallen'].includes(s.mode)||!s.player||!s.quests||!s.gear||!s.talents||!s.cooldowns)return false;
+ if(!s||![undefined,2,3].includes(s.encounterVersion)||s.version!==1||!['playing','fallen'].includes(s.mode)||!s.player||!s.quests||!s.gear||!s.talents||!s.cooldowns)return false;
  const p=s.player,b=createGame();
  if(!number(p.x,0,WORLD.width)||!number(p.y,0,WORLD.height)||!number(p.hp,0,1000)||!number(p.energy,0,80)||!Number.isInteger(p.level)||!number(p.level,1,20)||!number(p.xp,0,1e6)||!number(p.coins,0,1e8)||!Number.isInteger(p.potions)||!number(p.potions,0,99)||!number(p.face,-100,100)||!number(p.dash,0,.3))return false;
  if(!Array.isArray(s.bag)||s.bag.some(id=>!Object.hasOwn(ITEMS,id))||!s.bag.includes(s.gear.weapon)||!s.bag.includes(s.gear.armor)||ITEMS[s.gear.weapon]?.slot!=='weapon'||ITEMS[s.gear.armor]?.slot!=='armor')return false;
@@ -53,14 +55,14 @@ export function validSave(s){
  if(!Array.isArray(s.collected)||s.collected.some(k=>!known.some(n=>n.id===k))||!Array.isArray(s.waystones)||s.waystones.some(k=>!known.some(n=>n.id===k&&n.kind==='rest'))||!s.waystones.includes(s.checkpoint))return false;
  if(!Object.entries(campaignDefaults()).every(([k,v])=>typeof c[k]===typeof v))return false;
  if(!['','workers','house'].includes(c.forgeChoice)||!['','forged','focus'].includes(c.temper)||!['','mercy','debt'].includes(c.oryn)||!['','publish','conceal'].includes(c.archiveChoice)||!['','free','crown','accord'].includes(c.ending)||!Number.isInteger(c.bellStep)||!number(c.bellStep,0,2)||!Number.isInteger(c.echoes)||!number(c.echoes,0,1e6))return false;
- const validEnemies=(enemies,id)=>Array.isArray(enemies)&&enemies.length===regionData(id).spawns.length&&regionData(id).spawns.every(([key,type])=>enemies.filter(e=>e?.id===key&&e.type===type).length===1)&&enemies.every(e=>(e.recovery===undefined||number(e.recovery,0,2.4))&&(e.attackIndex===undefined||(Number.isInteger(e.attackIndex)&&number(e.attackIndex,0,1e7)))&&number(e.x,0,WORLD.width)&&number(e.y,0,WORLD.height)&&number(e.hp,0,s.encounterVersion===2?FOES[e.type].hp:({warden:165,commander:235}[e.type]||FOES[e.type].hp))&&typeof e.dead==='boolean'&&number(e.windup,0,2)&&number(e.wait,0,10)&&number(e.respawn,0,1e9)&&(!e.mark||(number(e.mark.x,0,WORLD.width)&&number(e.mark.y,0,WORLD.height)&&number(e.mark.r,0,200))));
+ const validEnemies=(enemies,id)=>Array.isArray(enemies)&&enemies.length===regionData(id).spawns.length&&regionData(id).spawns.every(([key,type])=>enemies.filter(e=>e?.id===key&&e.type===type).length===1)&&enemies.every(e=>(e.recovery===undefined||number(e.recovery,0,2.4))&&(e.attackIndex===undefined||(Number.isInteger(e.attackIndex)&&number(e.attackIndex,0,1e7)))&&number(e.x,0,WORLD.width)&&number(e.y,0,WORLD.height)&&number(e.hp,0,savedMaxHp(e.type,s.encounterVersion))&&typeof e.dead==='boolean'&&number(e.windup,0,2)&&number(e.wait,0,10)&&number(e.respawn,0,1e9)&&validMark(e.mark));
  if(!validEnemies(s.enemies,zone))return false;
  if(s.regions!==undefined&&(!s.regions||Array.isArray(s.regions)||!Object.entries(s.regions).every(([id,r])=>Object.hasOwn(REGIONS,id)&&id!==zone&&unlocked({...s,campaign:c},id)&&validEnemies(r?.enemies,id))))return false;
 
  return true;
 }
 export function load(storage){try{const s=JSON.parse(storage.getItem(SAVE_KEY));if(!validSave(s))return null;
- s.zone??='march';s.regions??={};s.campaign??=campaignDefaults();s.player.shield??=0;s.cooldowns.nova??=0;s.cooldowns.aegis??=0;if(s.encounterVersion!==2){for(const e of s.enemies){const old={warden:165,commander:235}[e.type];if(old&&!e.dead)e.hp=Math.round(e.hp/old*FOES[e.type].hp);}s.encounterVersion=2;}s.path=[];s.auto=false;s.target=null;s.effects=[];s.notices=[];s.dialogue=null;
+ s.zone??='march';s.regions??={};s.campaign??=campaignDefaults();s.player.shield??=0;s.cooldowns.nova??=0;s.cooldowns.aegis??=0;if(s.encounterVersion!==3){for(const enemies of [s.enemies,...Object.values(s.regions).map(r=>r.enemies)])for(const e of enemies){if(!e.dead)e.hp=Math.round(e.hp/savedMaxHp(e.type,s.encounterVersion)*FOES[e.type].hp);}s.encounterVersion=3;}s.path=[];s.auto=false;s.target=null;s.effects=[];s.notices=[];s.dialogue=null;
  for(const [zone,enemies] of [[s.zone,s.enemies],...Object.entries(s.regions).map(([id,r])=>[id,r.enemies])])for(const e of enemies){const original=newEnemies(zone).find(a=>a.id===e.id);e.recovery=Number.isFinite(e.recovery)?clamp(e.recovery,0,2.4):0;e.attackIndex=Number.isInteger(e.attackIndex)?Math.max(0,e.attackIndex):0;e.homeX=original.homeX;e.homeY=original.homeY;}
  s.player.hp=clamp(s.player.hp,0,stats(s).maxHp);return s;
 }catch{return null;}}

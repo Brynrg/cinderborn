@@ -1,6 +1,6 @@
 {
   "name": "cinderborn",
-  "version": "0.6.0-campaign.1",
+  "version": "0.6.1-campaign.1",
   "private": true,
   "type": "module",
   "scripts": {

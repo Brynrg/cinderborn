@@ -1,8 +1,8 @@
 import {NPCS,NODES,enemyById,dist,stats,potionHeal} from './data.js';
 import {gainXP,giveItem,notice} from './state.js';
-import {regionData,nodes} from './regions.js';
+import {regionData,nodes,regionalPeople} from './regions.js';
 import {campaignObjective,campaignTalk,campaignDialogue,campaignChoose} from './campaign-story.js';
-export function people(s){return regionData(s.zone).npcs.map(n=>s.zone==='march'&&s.quests[n.id]?{...n,x:n.id==='mara'?445:230,y:n.id==='mara'?1115:1080,title:'Safe at Emberrest'}:n);}
+export function people(s){return regionalPeople(s).map(n=>s.zone==='march'&&s.quests[n.id]?{...n,x:n.id==='mara'?445:230,y:n.id==='mara'?1115:1080,title:'Safe at Emberrest'}:n);}
 export function nearby(s){return [...people(s),...nodes(s).filter(n=>!s.collected.includes(n.id)&&!(n.kind==='seal'&&s.quests.seal))].filter(n=>dist(n,s.player)<95).sort((a,b)=>dist(a,s.player)-dist(b,s.player))[0]||null;}
 export function objective(s){
  const q=s.quests;

@@ -1,8 +1,9 @@
 import {FOES,SKILLS,CAMP,dist,stats,clamp,enemyById,skillCost,skillCooldown,potionHeal,skillUnlocked} from './data.js';
-import {isBoss,damageMultiplier,attackPlan} from './encounters.js';
+import {isBoss,isCampaignBoss,damageMultiplier,attackPlan} from './encounters.js';
 import {move,pathTo} from './world.js';
 import {gainXP,giveItem,notice,effect} from './state.js';
 import {regionData} from './regions.js';
+import {inDanger} from './telegraphs.js';
 import {bossBound} from './campaign-story.js';
 export const alive=s=>s.enemies.filter(e=>!e.dead);
 export function selectTarget(s,id){const e=enemyById(s,id);if(!e||e.dead)return;s.target=id;s.auto=true;s.path=[];}
@@ -15,6 +16,8 @@ function kill(s,e){
  if(s.target===e.id){s.target=null;s.auto=false;s.path=[];}
  if(s.quests.bounty&&['wolf','raider'].includes(e.type))s.quests.bountyKills=Math.min(3,s.quests.bountyKills+1);
  if(e.id==='seal-warden'){giveItem(s,'aegis');notice(s,'The northern seal is unwarded.','gold');}
+ if(e.id==='bailiff')notice(s,'Kargan is coming to the eastern foundry. Meet him by the open road.','gold');
+ if(e.id==='archivist')notice(s,'Torin joins you at the archive. The recovered names await your decision.','gold');
  if(e.id==='first-judge'&&s.campaign.echoActive){s.campaign.echoActive=false;s.campaign.echoes++;s.player.coins+=80;notice(s,`Echo ${s.campaign.echoes} defeated · 80 bonus crowns`,'gold');}
  if(e.id==='arbiter')notice(s,'The Conclave road is open.','gold');
  if(e.id==='hollowfang')notice(s,'Hollowfang falls. The caravan cache is unguarded.','gold');
@@ -54,13 +57,13 @@ function updateEnemy(s,e,dt){
  if(dist(p,{x:e.homeX,y:e.homeY})>470||dist(p,camp)<230){e.aggro=false;e.windup=0;e.mark=null;e.recovery=0;e.attackIndex=0;e.hp=def.hp;e.x=e.homeX;e.y=e.homeY;return;}
  s.combat=Math.max(s.combat,1);
  if(e.windup>0){
-  e.windup=Math.max(0,e.windup-dt);if(e.windup<=0){if(e.mark&&dist(p,e.mark)<e.mark.r+12)hurt(s,def.atk+(['commander','judge'].includes(e.type)&&(e.hp<def.hp/2||s.campaign.echoActive)?14:0));s.effects.push({kind:'impact',...e.mark,life:.3,total:.3});e.mark=null;e.recovery=isBoss(e)?2.4:0;e.wait=isBoss(e)?2.4:1.25;}return;
+  e.windup=Math.max(0,e.windup-dt);if(e.windup<=0){if(e.mark&&inDanger(p,e.mark))hurt(s,def.atk+(['commander','judge'].includes(e.type)&&(e.hp<def.hp/2||s.campaign.echoActive)?14:0));s.effects.push({kind:'impact',...e.mark,life:.3,total:.3});e.mark=null;const opening=e.type!=='judge'||e.attackIndex%2===0;e.recovery=isBoss(e)&&opening?2.4:0;e.wait=isBoss(e)?opening?2.4:.45:1.25;}return;
  }
  if(e.recovery>0)return;
  const range=def.range;
  if(dist(e,p)>range*.8)toward(e,p,def.speed*(['commander','judge'].includes(e.type)&&(e.hp<def.hp/2||s.campaign.echoActive)?1.3:1),dt,s.zone);
- if(dist(e,p)<=range&&!e.wait){
-  const boss=isBoss(e);e.mark=boss?attackPlan(e,p,s.campaign.echoActive):{x:p.x,y:p.y,r:48};e.windup=boss?e.mark.duration:.65;e.attackIndex=(e.attackIndex||0)+1;
+ if(dist(e,p)<=(isCampaignBoss(e)?440:range)&&!e.wait){
+  const boss=isBoss(e);e.mark=boss?attackPlan(e,p,s.campaign.echoActive,s.campaign.echoes):{x:p.x,y:p.y,r:48};e.windup=boss?e.mark.duration:.65;e.attackIndex=(e.attackIndex||0)+1;
  }
 }
 export function tick(s,dt,input={}){

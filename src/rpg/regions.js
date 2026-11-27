@@ -41,3 +41,8 @@ export function newEnemies(zone='march'){return regionData(zone).spawns.map(([id
 export const campaignDefaults=()=>({forgeAccepted:false,forgeChoice:'',temper:'',supplies:false,orynStarted:false,oryn:'',fenAccepted:false,archiveChoice:'',sylaStarted:false,syla:false,medicine:false,bellStep:0,bellSolved:false,finale:false,ending:'',echoes:0,echoActive:false});
 export function unlocked(s,id){return id==='march'||id==='forge'&&s.quests.complete||id==='fen'&&!!s.campaign?.forgeChoice||id==='citadel'&&!!s.campaign?.archiveChoice;}
 export function destination(s,zone,target){if((s.zone||'march')===zone)return target;const order=['march','forge','fen','citadel'],toward=order[order.indexOf(s.zone||'march')+(order.indexOf(zone)>order.indexOf(s.zone||'march')?1:-1)];return nodes(s).find(n=>n.to===toward)||NODES.find(n=>n.id==='exit');}
+
+export function regionalPeople(s,zone=s.zone){
+ const enemies=zone===s.zone?s.enemies:s.regions[zone]?.enemies||[];
+ return regionData(zone).npcs.map(n=>n.id==='kargan'&&enemies.some(e=>e.id==='bailiff'&&e.dead)?{...n,x:2270,y:820,title:'At the freed foundry'}:n.id==='torin'&&enemies.some(e=>e.id==='archivist'&&e.dead)?{...n,x:2290,y:820,title:'At the recovered archive'}:n);
+}

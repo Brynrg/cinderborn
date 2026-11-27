@@ -1,6 +1,6 @@
 import {NPCS,NODES,enemyById,dist,stats} from './data.js';
 import {gainXP,giveItem,notice} from './state.js';
-export function people(s){return NPCS.map(n=>s.quests[n.id]?{...n,x:n.id==='mara'?445:230,y:1170,title:'Safe at Emberrest'}:n);}
+export function people(s){return NPCS.map(n=>s.quests[n.id]?{...n,x:n.id==='mara'?445:230,y:n.id==='mara'?1115:1080,title:'Safe at Emberrest'}:n);}
 export function nearby(s){return [...people(s),...NODES.filter(n=>!s.collected.includes(n.id))].filter(n=>dist(n,s.player)<95).sort((a,b)=>dist(a,s.player)-dist(b,s.player))[0]||null;}
 export function objective(s){
  const q=s.quests;

@@ -174,3 +174,9 @@ Main play should feel like adventuring through the world, not commanding a board
   the first automatic steel strike before the selection assertion runs. The
   journey now accepts the observed dead enemy as the expected combat outcome;
   living enemies must still be correctly targeted. Rechecking before final receipt.
+- Live verification caught rescued Mara's new camp position overlapping scenery.
+  Moved both return positions inside the camp clearing and extended the oath
+  browser journey to return and speak to both rescued people after reload.
+- Version 0.5.0-rpg.2: all 46 rule/save tests and 25 browser tests pass again,
+  including the new post-ending camp visit. Final skill-client camp traversal
+  screenshot/state inspected; no errors. Publication uses the same GitHub route.

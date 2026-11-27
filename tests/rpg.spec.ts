@@ -5,7 +5,7 @@ for(const route of ['oath','defiant'])test(`RPG: ${route} journey through quests
  test.setTimeout(150_000);await page.setViewportSize({width:1440,height:900});const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(url);await ui(page,'new');const s=await storyRoute(page,route,async(stage:string)=>page.screenshot({path:info.outputPath(`${route}-${stage}.png`)}));
  expect(s.player.level).toBeGreaterThan(2);expect(s.bag).toContain('cinder');expect(s.quests.herbsDone).toBe(true);expect(s.quests.mara).toBe(route==='oath');
- await ui(page,'choice:close');await page.reload();await ui(page,'continue');const reloaded=await game(page);expect(reloaded.quests).toEqual(s.quests);expect(reloaded.gear).toEqual(s.gear);expect(reloaded.player.level).toBe(s.player.level);expect(errors).toEqual([]);
+ await ui(page,'choice:close');await page.reload();await ui(page,'continue');const reloaded=await game(page);expect(reloaded.quests).toEqual(s.quests);expect(reloaded.gear).toEqual(s.gear);expect(reloaded.player.level).toBe(s.player.level);expect(errors).toEqual([]);if(route==='oath'){await advance(page,6000);await ui(page,'map');await ui(page,'travel:campfire');await speak(page,'mara','close');await speak(page,'brann','close');}
 });
 test('RPG: movement, interaction, pause, equipment layout and corrupt save recovery',async({page},info)=>{
  await page.goto(url);await ui(page,'new');const start=await game(page);await page.keyboard.down('ArrowRight');await advance(page,250);await page.keyboard.up('ArrowRight');expect((await game(page)).player.x).toBeGreaterThan(start.player.x+30);

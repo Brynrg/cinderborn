@@ -1,6 +1,6 @@
 # Cinderborn status
 
-Updated 2026-11-26. Version 0.5.0-rpg.1; solo RPG genre rebuild.
+Updated 2026-11-26. Version 0.5.0-rpg.2; solo RPG genre rebuild.
 
 - **Pass:** the default game is a continuous, real-time action RPG with direct
   Ash control, NPC quests, sword/fire/healing/dodge abilities, enemy telegraphs,

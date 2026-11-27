@@ -22,8 +22,8 @@ export const FOES={
  wolf:{name:'Ash wolf',hp:30,atk:8,speed:105,range:55,xp:18,coins:7,color:'#b6ab96',kind:'beast'},
  raider:{name:'Road reaver',hp:46,atk:10,speed:90,range:60,xp:24,coins:10,color:'#9d6656',kind:'blade'},
  jailer:{name:'Conclave jailer',hp:80,atk:12,speed:80,range:66,xp:45,coins:18,color:'#9a9f9e',kind:'warden'},
- warden:{name:'The Seal Warden',hp:165,atk:19,speed:75,range:115,xp:85,coins:30,color:'#ae8a56',kind:'boss'},
- commander:{name:'Arbiter of the Crossing',hp:235,atk:22,speed:85,range:125,xp:120,coins:45,color:'#bfc6cb',kind:'boss'},
+ warden:{name:'The Seal Warden',hp:380,atk:62,speed:75,range:115,xp:85,coins:30,color:'#ae8a56',kind:'boss'},
+ commander:{name:'Arbiter of the Crossing',hp:560,atk:78,speed:85,range:125,xp:120,coins:45,color:'#bfc6cb',kind:'boss'},
  hound:{name:'Hollowfang',hp:115,atk:15,speed:120,range:85,xp:65,coins:22,color:'#6d9da0',kind:'beast'},
 };
 export const SPAWNS=[
@@ -61,3 +61,7 @@ export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const levelCost=level=>35+level*20;
 export const enemyById=(s,id)=>s.enemies.find(e=>e.id===id);
 export function stats(s){return {maxHp:100+(s.player.level-1)*12+s.talents.resolve*15+(ITEMS[s.gear.armor]?.hp||0),atk:10+(s.player.level-1)*2+s.talents.steel*2+(ITEMS[s.gear.weapon]?.atk||0),fire:26+(s.player.level-1)*3+s.talents.flame*5};}
+
+export const skillCost=(s,id)=>id==='dash'&&s.quests.mara?8:SKILLS.find(k=>k.id===id)?.cost||0;
+export const skillCooldown=(s,id)=>id==='dash'&&s.quests.mara?2.6:SKILLS.find(k=>k.id===id)?.cd||0;
+export const potionHeal=s=>s.quests.brann?65:50;

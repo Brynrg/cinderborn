@@ -28,7 +28,14 @@ and the Conclave road. The region stays playable after the chapter's ending.
 
 Levels grant talent points. Equip weapons and armor in Character. Read enemy
 red attack areas, move or Veilstep out before impact, and manage regenerating
-focus and cooldowns. Rest at a hearth to restore health and three draughts.
+focus and cooldowns. Bosses brace for reduced damage, then expose a 2.4-second
+opening after each attack that takes 50% extra damage. Their marked sweeps and
+eruptions alternate; the Arbiter speeds up below half health.
+
+Click a side quest in the tracker or journal to follow its next objective and
+turn-in. Rescuing Mara improves Veilstep to 8 focus and a 2.6-second cooldown;
+Brann improves draughts to 65 healing. Vesper previews these rewards before the
+choice. Finished conversations show check marks. Rest at a hearth to restore health and three draughts.
 Discovered hearths unlock fast travel outside combat. Defeat preserves progress.
 
 ## Persistence and scope

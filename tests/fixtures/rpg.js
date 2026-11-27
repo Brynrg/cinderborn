@@ -12,12 +12,18 @@ export async function fight(page,id){
  const {cx,cy,w,h,scale}=s.camera,x=(e.x-cx)*scale+w/2,y=(e.y-cy)*scale+h/2;
  await page.locator('#world').click({position:{x,y}});
  s=await game(page);e=s.enemies.find(e=>e.id===id);if(e?.dead)return;assert.equal(s.target,id,`target ${id}`);
- for(let i=0;i<120;i++){
+ for(let i=0;i<240;i++){
   s=await game(page);e=s.enemies.find(e=>e.id===id);if(!e||e.dead)return;
   assert.notEqual(s.mode,'fallen',`fell fighting ${id}`);
   if(s.player.hp<s.player.maxHp*.65)await page.keyboard.press('Digit3');
   if(s.player.hp<s.player.maxHp*.35)await page.keyboard.press('KeyQ');
-  if(!s.cooldowns.fire&&s.player.energy>=18)await page.keyboard.press('Digit2');
+  const boss=['warden','commander'].includes(e.type);if(boss&&page.captureCombat)await page.captureCombat(s,e);
+  if(boss&&e.mark&&Math.hypot(s.player.x-e.mark.x,s.player.y-e.mark.y)<e.mark.r+20){
+   const dx=s.player.x-e.mark.x,dy=s.player.y-e.mark.y,key=Math.abs(dx)>=Math.abs(dy)?(dx>=0?'KeyD':'KeyA'):(dy>=0?'KeyS':'KeyW');
+   await page.keyboard.down(key);if(!s.cooldowns.dash&&s.player.energy>=12)await page.keyboard.press('Digit4');await advance(page,250);await page.keyboard.up(key);continue;
+  }
+  if(!s.auto&&!e.mark){const v=s.camera;await page.locator('#world').click({position:{x:(e.x-v.cx)*v.scale+v.w/2,y:(e.y-v.cy)*v.scale+v.h/2}});}
+  if(!s.cooldowns.fire&&s.player.energy>=18&&(!boss||e.recovery>0))await page.keyboard.press('Digit2');
   await advance(page,300);
  }
  throw new Error(`Combat stalled on ${id}: ${JSON.stringify(await game(page))}`);
@@ -51,7 +57,7 @@ export async function storyRoute(page,route='oath',capture=async()=>{}){
  if(s.quests.bountyKills>=3)await speak(page,'rook','bounty-reward');
  if((await game(page)).player.coins>=30)await speak(page,'sable','buy-iron');await develop(page);await capture('camp');
  await go(page,{x:1450,y:890});await page.keyboard.press('KeyE');
- await go(page,{x:1460,y:730});await speak(page,'vesper',route==='oath'?'oath':'defy');await capture('choice');
+ await go(page,{x:1460,y:730});await page.keyboard.press('KeyE');await capture('bargain');await ui(page,'choice:'+(route==='oath'?'oath':'defy'));await capture('choice');
  if(route==='oath'){
   await go(page,{x:1420,y:340});await fight(page,'north-jailer');await speak(page,'mara','free-mara');await develop(page);
   await go(page,{x:1810,y:1280});await fight(page,'south-jailer');await speak(page,'brann','free-brann');

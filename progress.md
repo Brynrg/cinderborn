@@ -188,3 +188,31 @@ Main play should feel like adventuring through the world, not commanding a board
 - Final clock correction: all 46 rule/save tests and 26 browser tests pass;
   syntax, build and relative-path checks also pass. The new regression proves
   that delayed inputs do not advance the world and explicit resume restores it.
+
+## Critical RPG playtest — 2026-11-26
+
+- Played both existing routes with normal browser inputs. Both completed with
+  eight Firebrands and no dodge, heal or potion use. The old Arbiter did not
+  require engagement with the combat mechanics. Side quests lacked directions,
+  finished NPCs retained exclamation marks, and the rescue route had only XP.
+- Added alternating boss attacks, visible guard/recovery states, +50% damage
+  openings and meaningful incoming damage. The former stationary approach now
+  loses to the Arbiter; active play completes both routes. Oath used three
+  dodges; defiant used six dodges, two Mends and one draught, with no deaths.
+- Added side-quest tracking/turn-in directions, completed-NPC markers, clearer
+  story choices, rescue perks (Mara: cheaper/faster dodge; Brann: stronger
+  draughts), dynamic descriptions, and fading trees over nearby characters.
+  Taking Rook's bounty first now also accepts the main quest without a duplicate
+  bounty/reset trap. Collected seals no longer keep advertising an interaction.
+- Added coverage for combat windows, alternating attacks, stationary loss,
+  save compatibility, rescue perks and quest guidance. Final UI/release checks
+  and publication pending.
+- Release checks: Pass — 54 rule/save tests, 27 browser tests, 30-file syntax
+  validation, production build, relative-path lint and diff check. Full browser
+  tests cover side-quest tracking/turn-in and visible boss cues as well as both
+  endings, post-ending camp visits, old modes and save/error cases. Inspected
+  Vesper's reward preview, danger/opening banners and turn-in tracker screenshots.
+- Version 0.5.1-rpg.1. Existing saves remain in the same slot, with living boss
+  damage proportions preserved and completed bosses left defeated. Owner fun,
+  exhaustive balance and phone/Safari/Firefox acceptance remain Not Proven.
+  Canonical GitHub publication and separate live receipt follow.

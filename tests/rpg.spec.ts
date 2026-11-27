@@ -3,9 +3,10 @@ import {game,advance,ui,go,speak,storyRoute,fight,develop,mapWalk} from './fixtu
 const url='http://localhost:4173/';
 for(const route of ['oath','defiant'])test(`RPG: ${route} journey through quests, equipment, combat and chapter completion`,async({page},info)=>{
  test.setTimeout(150_000);await page.setViewportSize({width:1440,height:900});const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ const captured=new Set();page.captureCombat=async(s,e)=>{const phase=e.mark?'warning':e.recovery>0?'opening':null;if(phase&&!captured.has(phase)){captured.add(phase);await expect(page.locator('#combat-cue')).toBeVisible();await page.screenshot({path:info.outputPath(`${route}-boss-${phase}.png`)});}};
  await page.goto(url);await ui(page,'new');const s=await storyRoute(page,route,async(stage:string)=>page.screenshot({path:info.outputPath(`${route}-${stage}.png`)}));
  expect(s.player.level).toBeGreaterThan(2);expect(s.bag).toContain('cinder');expect(s.quests.herbsDone).toBe(true);expect(s.quests.mara).toBe(route==='oath');
- await ui(page,'choice:close');await page.reload();await ui(page,'continue');const reloaded=await game(page);expect(reloaded.quests).toEqual(s.quests);expect(reloaded.gear).toEqual(s.gear);expect(reloaded.player.level).toBe(s.player.level);expect(errors).toEqual([]);if(route==='oath'){await advance(page,6000);await ui(page,'map');await ui(page,'travel:campfire');await speak(page,'mara','close');await speak(page,'brann','close');}
+ await ui(page,'choice:close');await page.reload();await ui(page,'continue');const reloaded=await game(page);expect(reloaded.quests).toEqual(s.quests);expect(reloaded.gear).toEqual(s.gear);expect(reloaded.player.level).toBe(s.player.level);expect(errors).toEqual([]);if(route==='oath'){await ui(page,'character');await expect(page.locator('.boons')).toContainText('8 focus');await expect(page.locator('.boons')).toContainText('65 health');await ui(page,'close');await advance(page,6000);await ui(page,'map');await ui(page,'travel:campfire');await speak(page,'mara','close');await speak(page,'brann','close');}
 });
 test('RPG: movement, interaction, pause, equipment layout and corrupt save recovery',async({page},info)=>{
  await page.goto(url);await ui(page,'new');const start=await game(page);await page.keyboard.down('ArrowRight');await advance(page,250);await page.keyboard.up('ArrowRight');expect((await game(page)).player.x).toBeGreaterThan(start.player.x+30);
@@ -37,4 +38,13 @@ test('RPG: telegraphs, dodge, falling, reload and recovery retain progress',asyn
 test('RPG: controlled clock stays paused between slow inputs and resumes live play',async({page})=>{
  await page.goto(url);await ui(page,'new');await page.keyboard.down('KeyD');await advance(page,0);const x=(await game(page)).player.x;
  await page.waitForTimeout(400);expect((await game(page)).player.x).toBe(x);await page.evaluate(()=>window.resumeTime());await page.waitForTimeout(250);await page.keyboard.up('KeyD');expect((await game(page)).player.x).toBeGreaterThan(x+20);
+});
+
+test('RPG: side quest tracking points to gathering then the reward and back to the story',async({page},info)=>{
+ await page.goto(url);await ui(page,'new');await speak(page,'rook','bounty');expect((await game(page)).quests.metRook).toBe(true);await speak(page,'iona','herbs');
+ await ui(page,'track-quest:herbs');expect((await game(page)).objective.target.kind).toBe('herb');
+ for(const n of [{x:670,y:1070},{x:850,y:990},{x:740,y:1230}]){await go(page,n);await page.keyboard.press('KeyE');}
+ expect((await game(page)).objective.target.id).toBe('iona');await expect(page.locator('#quest-text')).toContainText('Return to Iona');await page.screenshot({path:info.outputPath('turn-in-guidance.png')});await speak(page,'iona','herbs-reward');
+ await ui(page,'track-quest:bounty');expect((await game(page)).objective.target.id).toBe('rook');await speak(page,'rook','bounty-reward');await ui(page,'track-quest:story');expect((await game(page)).objective.target.id).toBe('vesper');
+ await ui(page,'journal');await ui(page,'track-quest:cache');expect((await game(page)).objective.target.id).toBe('cache');
 });

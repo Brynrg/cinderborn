@@ -18,7 +18,9 @@ planning; discovered hearths provide out-of-combat fast travel and recovery.
 - Sable sells better steel and healing supplies.
 - Vesper recognizes the Cinder beneath the stolen crest. Her seal binds Ash to
   save Mara and Brann; declining leads to the Seal Warden and the northern shrine.
-- The prisoners return to Emberrest when freed and can be visited there.
+- The prisoners return to Emberrest when freed and can be visited there. Mara
+  teaches a cheaper, faster Veilstep; Brann improves healing draughts. These
+  rewards distinguish the rescue path from the Seal Warden’s armor reward.
 - The Arbiter of the Crossing guards the Conclave road. Defeating it and reaching
   the road completes the first chapter, rewards Cindersteel, and leaves the
   region open for unfinished quests and exploration.
@@ -35,8 +37,10 @@ talents/equip loot → take on harder encounters → resolve a story choice.
 
 Steel is a continuous basic attack. Firebrand is ranged damage, Mend is healing,
 and Veilstep is a short invulnerable dash. Focus regenerates; cooldowns prevent
-spamming. Enemy windups draw red danger areas before impact. The Arbiter becomes
-faster and hits harder below half health. Forbidden fire raises suspicion and
+spamming. Enemy windups draw red danger areas before impact. Bosses alternate a sweep around themselves with a strike on marked ground.
+Guard reduces incoming damage by 60%; after an attack, a 2.4-second recovery
+window takes 50% extra damage. The HUD names attacks and counts down danger and
+openings. The Arbiter becomes faster and hits harder below half health. Forbidden fire raises suspicion and
 extends judges' detection range at high heat.
 
 XP unlocks levels and talent points. Steel, flame and resolve talents change

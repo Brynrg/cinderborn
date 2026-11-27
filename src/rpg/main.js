@@ -4,6 +4,7 @@ import {createGame,load,save,equip,talent,revive,notice} from './state.js';
 import {tick,cast,navigate,selectTarget,cycleTarget,alive} from './engine.js';
 import {nearby,talk,choose,objective,people} from './story.js';
 import {draw} from './render.js';
+import {trackedObjective} from './guidance.js';
 import {$,initUI,paintUI} from './ui.js';
 let storage;try{storage=window.localStorage;}catch{/* Play remains available without storage. */}
 let stored=load(storage),state=stored||createGame();
@@ -18,11 +19,12 @@ function skill(id){if(paused())return;if(cast(state,id)){sound(id);persist();}pa
 function interact(){if(paused())return;const n=nearby(state);if(n){talk(state,n.id);clearInput();persist();}else notice(state,'Move near a person, plant, chest or hearth.');paint();}
 function act(id){
  const [kind,value]=id.split(':');
- if(id==='new'){state=createGame();ui.screen=null;ui.approach=null;clearInput();persist();focusWorld();}
+ if(id==='new'){state=createGame();ui.quest='story';ui.screen=null;ui.approach=null;clearInput();persist();focusWorld();}
  else if(id==='continue'){ui.screen=null;focusWorld();}
  else if(id==='close'){ui.screen=null;state.dialogue=null;clearInput();persist();focusWorld();}
  else if(id==='revive'){revive(state);ui.screen=null;persist();focusWorld();}
  else if(id==='interact')return interact();
+ else if(kind==='track-quest'){ui.quest=value;ui.track=true;ui.screen=null;clearInput();focusWorld();}
  else if(id==='track')ui.track=!ui.track;
  else if(id==='sound')ui.sound=!ui.sound;
  else if(kind==='choice'){choose(state,value);persist();clearInput();if(!state.dialogue)focusWorld();}
@@ -46,7 +48,7 @@ canvas.addEventListener('pointerdown',event=>{
  const rect=canvas.getBoundingClientRect(),p={x:(event.clientX-rect.left-view.w/2)/view.scale+view.cx,y:(event.clientY-rect.top-view.h/2)/view.scale+view.cy};focusWorld();
  const e=alive(state).filter(e=>dist(e,p)<(FOES[e.type].kind==='boss'?40:32)).sort((a,b)=>dist(a,p)-dist(b,p))[0];
  if(e){selectTarget(state,e.id);ui.approach=null;return;}
- const n=[...people(state),...NODES.filter(n=>!state.collected.includes(n.id))].find(n=>dist(n,p)<36);
+ const n=[...people(state),...NODES.filter(n=>!state.collected.includes(n.id)&&!(n.kind==='seal'&&state.quests.seal))].find(n=>dist(n,p)<36);
  if(n){if(dist(n,state.player)<95){talk(state,n.id);clearInput();persist();}else{navigate(state,n);ui.approach=n.id;}}
  else{navigate(state,p);ui.approach=null;}
  paint();
@@ -78,5 +80,5 @@ function advance(dt){
 function frame(now){const dt=Math.min(.05,(now-lastTime)/1000);lastTime=now;if(!manualClock)advance(dt);view=draw(canvas,state,ui);if(now-lastPaint>100){paintUI(state,ui,!!stored);lastPaint=now;}if(now-lastSave>1000&&ui.screen!=='entry'){persist();lastSave=now;}requestAnimationFrame(frame);}
 window.advanceTime=ms=>{manualClock=true;for(let t=0;t<ms;t+=1000/60)advance(Math.min(1000/60,ms-t)/1000);persist();paint();};
 window.resumeTime=()=>{manualClock=false;lastTime=performance.now();};
-window.render_game_to_text=()=>JSON.stringify({mode:state.mode,screen:ui.screen,dialogue:state.dialogue,coordinateSystem:'World pixels. Origin northwest; x east, y south. WASD and click-to-move. Real-time combat.',world:WORLD,camera:view,player:{...state.player,maxHp:stats(state).maxHp},gear:state.gear,bag:state.bag,talents:state.talents,points:state.points,cooldowns:state.cooldowns,quests:state.quests,objective:objective(state),collected:state.collected,checkpoint:state.checkpoint,waystones:state.waystones,heat:state.heat,target:state.target,auto:state.auto,pathEnd:state.path.at(-1)||null,nearby:nearby(state),enemies:state.enemies.filter(e=>dist(e,state.player)<750).map(e=>({id:e.id,type:e.type,name:FOES[e.type].name,x:e.x,y:e.y,hp:e.hp,dead:e.dead,aggro:e.aggro,windup:e.windup,mark:e.mark})),npcs:people(state).filter(n=>dist(n,state.player)<750),notices:state.notices.map(n=>n.text),kills:state.kills,deaths:state.deaths,saveFailed:ui.saveFailed});
+window.render_game_to_text=()=>JSON.stringify({mode:state.mode,screen:ui.screen,dialogue:state.dialogue,coordinateSystem:'World pixels. Origin northwest; x east, y south. WASD and click-to-move. Real-time combat.',world:WORLD,camera:view,player:{...state.player,maxHp:stats(state).maxHp},gear:state.gear,bag:state.bag,talents:state.talents,points:state.points,cooldowns:state.cooldowns,quests:state.quests,objective:trackedObjective(state,ui.quest),collected:state.collected,checkpoint:state.checkpoint,waystones:state.waystones,heat:state.heat,target:state.target,auto:state.auto,pathEnd:state.path.at(-1)||null,nearby:nearby(state),enemies:state.enemies.filter(e=>dist(e,state.player)<750).map(e=>({id:e.id,type:e.type,name:FOES[e.type].name,x:e.x,y:e.y,hp:e.hp,dead:e.dead,aggro:e.aggro,windup:e.windup,mark:e.mark,recovery:e.recovery||0})),npcs:people(state).filter(n=>dist(n,state.player)<750),notices:state.notices.map(n=>n.text),kills:state.kills,deaths:state.deaths,saveFailed:ui.saveFailed});
 new ResizeObserver(paint).observe($('rpg'));paint();requestAnimationFrame(frame);

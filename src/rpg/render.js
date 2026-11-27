@@ -1,6 +1,7 @@
 import {WORLD,CAMP,NPCS,NODES,FOES,dist,stats} from './data.js';
 import {SCENERY,BUILDINGS,ROADS,region} from './world.js';
-import {people,objective} from './story.js';
+import {people} from './story.js';
+import {trackedObjective,questMark} from './guidance.js';
 let terrain;
 const oval=(c,x,y,rx,ry,color)=>{c.fillStyle=color;c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fill();};
 function label(c,text,x,y,color='#eee5c7',size=12){c.font=`600 ${size}px system-ui`;c.textAlign='center';c.lineWidth=3;c.strokeStyle='#182a26';c.strokeText(text,x,y);c.fillStyle=color;c.fillText(text,x,y);}
@@ -43,7 +44,7 @@ function humanoid(c,u,color,face=0,boss=false,time=0,walking=false){
 }
 function beast(c,e,time){oval(c,e.x,e.y+5,24,9,'#152c2460');const color=FOES[e.type].color;oval(c,e.x,e.y-10,23,13,color);oval(c,e.x+19,e.y-17,11,11,color);c.fillStyle='#37453c';c.beginPath();c.moveTo(e.x+12,e.y-23);c.lineTo(e.x+15,e.y-36);c.lineTo(e.x+23,e.y-24);c.fill();c.strokeStyle=color;c.lineWidth=6;c.beginPath();c.moveTo(e.x-16,e.y-10);c.lineTo(e.x-31,e.y-22+Math.sin(time*3)*3);c.stroke();c.fillStyle='#edc77e';c.fillRect(e.x+22,e.y-19,3,3);}
 function node(c,n,s){
- if(s.collected.includes(n.id))return;
+ if(s.collected.includes(n.id)||(n.kind==='seal'&&s.quests.seal))return;
  if(n.kind==='rest'){
   oval(c,n.x,n.y,40,22,'#e4a85418');if(n.id==='campfire'){for(let i=0;i<8;i++){const a=i*Math.PI/4;oval(c,n.x+Math.cos(a)*21,n.y+Math.sin(a)*12,7,5,'#5b6054');}c.fillStyle='#e78b43';c.beginPath();c.moveTo(n.x-12,n.y);c.quadraticCurveTo(n.x+7,n.y-18,n.x,n.y-38-Math.sin(s.time*5)*4);c.quadraticCurveTo(n.x+28,n.y-7,n.x+12,n.y);c.fill();oval(c,n.x,n.y-8,7,12,'#f9d18c');}
   else {c.fillStyle='#839c96';c.fillRect(n.x-12,n.y-40,24,45);c.fillStyle=s.waystones.includes(n.id)?'#9ee3ca':'#d1d2a2';c.fillRect(n.x-3,n.y-30,6,23);}
@@ -59,13 +60,13 @@ export function draw(canvas,s,ui){
  const scale=Math.max(.7,Math.min(1.15,w/1280)),cx=Math.max(w/scale/2,Math.min(WORLD.width-w/scale/2,s.player.x)),cy=Math.max(h/scale/2,Math.min(WORLD.height-h/scale/2,s.player.y));
  const view={cx,cy,scale,w,h};c.save();c.translate(w/2-cx*scale,h/2-cy*scale);c.scale(scale,scale);terrain??=terrainLayer();c.drawImage(terrain,0,0);
  const visible=o=>Math.abs(o.x-cx)<w/scale/2+100&&Math.abs(o.y-cy)<h/scale/2+130;
- const goal=objective(s).target;
+ const goal=trackedObjective(s,ui.quest).target;
  if(ui.track&&goal){c.strokeStyle='#f2d28c50';c.setLineDash([5,12]);c.lineWidth=2;c.beginPath();c.moveTo(s.player.x,s.player.y);c.lineTo(goal.x,goal.y);c.stroke();c.setLineDash([]);oval(c,goal.x,goal.y,40+Math.sin(s.time*3)*3,20,'#efd18d22');}
  if(s.path.length){const p=s.path.at(-1);c.strokeStyle='#f4dba1';c.lineWidth=2;c.beginPath();c.ellipse(p.x,p.y,14,8,0,0,Math.PI*2);c.stroke();}
  for(const e of s.enemies.filter(e=>!e.dead&&e.mark)){c.fillStyle='#d95d4940';c.strokeStyle='#ffad77';c.lineWidth=3;c.beginPath();c.arc(e.mark.x,e.mark.y,e.mark.r,0,Math.PI*2);c.fill();c.stroke();c.fillStyle='#f5c5a0';c.font='bold 18px Georgia';c.textAlign='center';c.fillText('!',e.mark.x,e.mark.y+6);}
  NODES.filter(visible).forEach(n=>node(c,n,s));
- const things=[...SCENERY.filter(visible).map(o=>({...o,draw:()=>tree(c,o)})),...BUILDINGS.filter(visible).map(b=>({...b,y:b.y+b.h,draw:()=>building(c,b)}))];
- for(const n of people(s).filter(visible))things.push({...n,draw:()=>{humanoid(c,n,n.color,1,false,s.time);label(c,n.name,n.x,n.y-53,'#ece4c5',13);const mark=['mara','brann'].includes(n.id)?'◇':'!';label(c,mark,n.x,n.y-76,'#ffd97b',23);}});
+ const things=[...SCENERY.filter(visible).map(o=>({...o,draw:()=>{c.globalAlpha=[s.player,...people(s)].some(n=>Math.abs(o.x-n.x)<o.size&&n.y<o.y&&n.y>o.y-o.size*2)? .35:1;tree(c,o);c.globalAlpha=1;}})),...BUILDINGS.filter(visible).map(b=>({...b,y:b.y+b.h,draw:()=>building(c,b)}))];
+ for(const n of people(s).filter(visible))things.push({...n,draw:()=>{humanoid(c,n,n.color,1,false,s.time);label(c,n.name,n.x,n.y-53,'#ece4c5',13);const mark=questMark(s,n.id);label(c,mark,n.x,n.y-76,'#ffd97b',23);}});
  for(const e of s.enemies.filter(e=>!e.dead&&visible(e))){const def=FOES[e.type];things.push({...e,draw:()=>{if(s.target===e.id){c.strokeStyle='#efd085';c.lineWidth=2;c.beginPath();c.ellipse(e.x,e.y+4,def.kind==='boss'?35:25,13,0,0,Math.PI*2);c.stroke();}def.kind==='beast'?beast(c,e,s.time):humanoid(c,e,def.color,Math.atan2(s.player.y-e.y,s.player.x-e.x),def.kind==='boss',s.time,e.aggro);if(dist(e,s.player)<350||s.target===e.id){const by=e.y-(def.kind==='boss'?72:54);label(c,def.name,e.x,by,'#edd2bb',11);c.fillStyle='#28332e';c.fillRect(e.x-26,by+7,52,5);c.fillStyle='#bf7058';c.fillRect(e.x-26,by+7,52*Math.max(0,e.hp)/def.hp,5);}}});}
  things.push({...s.player,draw:()=>{if(s.player.dash>0)oval(c,s.player.x,s.player.y,30,20,'#f7b76c55');humanoid(c,s.player,'#c98454',s.player.face,false,s.time,s.path.length>0||ui.walking);label(c,'Ash',s.player.x,s.player.y-56,'#f6dfa8',13);}});
  things.sort((a,b)=>a.y-b.y).forEach(o=>o.draw());

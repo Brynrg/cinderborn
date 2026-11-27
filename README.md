@@ -70,4 +70,6 @@ copy `dist` directly into the portal. Vite `base: "./"` remains required.
 `state.js` saves/progression, `story.js` quests/dialogue, `engine.js` real-time
 simulation, `render.js` canvas artwork, `ui.js` panels, and `main.js` input/loop.
 `render_game_to_text` exposes observable state and `advanceTime(ms)` steps the same
-simulation for controlled tests. No runtime dependencies were added.
+simulation for controlled tests. Calling `advanceTime` pauses the wall clock until
+`resumeTime()` is called, so slow automation cannot move targets between inputs.
+No runtime dependencies were added.

@@ -33,3 +33,8 @@ test('RPG: telegraphs, dodge, falling, reload and recovery retain progress',asyn
  await advance(page,40000);expect((await game(page)).mode).toBe('fallen');await page.screenshot({path:info.outputPath('fallen.png')});
  await page.reload();await ui(page,'continue');expect((await game(page)).mode).toBe('fallen');await ui(page,'revive');const s=await game(page);expect(s.quests.metRook).toBe(true);expect(s.player.hp).toBe(s.player.maxHp);expect(s.deaths).toBe(1);expect(s.player.x).toBe(360);
 });
+
+test('RPG: controlled clock stays paused between slow inputs and resumes live play',async({page})=>{
+ await page.goto(url);await ui(page,'new');await page.keyboard.down('KeyD');await advance(page,0);const x=(await game(page)).player.x;
+ await page.waitForTimeout(400);expect((await game(page)).player.x).toBe(x);await page.evaluate(()=>window.resumeTime());await page.waitForTimeout(250);await page.keyboard.up('KeyD');expect((await game(page)).player.x).toBeGreaterThan(x+20);
+});

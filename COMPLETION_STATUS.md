@@ -1,6 +1,6 @@
 # Cinderborn status
 
-Updated 2026-11-26. Version 0.5.0-rpg.2; solo RPG genre rebuild.
+Updated 2026-11-26. Version 0.5.0-rpg.3; solo RPG genre rebuild.
 
 - **Pass:** the default game is a continuous, real-time action RPG with direct
   Ash control, NPC quests, sword/fire/healing/dodge abilities, enemy telegraphs,
@@ -13,7 +13,7 @@ Updated 2026-11-26. Version 0.5.0-rpg.2; solo RPG genre rebuild.
   unavailable storage and corrupt-save recovery.
 - **Pass:** combat saves remain valid through every simulated frame including
   enemy windup completion and death. New RPG saves are independent of old modes.
-- **Pass:** 46 rule/persistence tests, 25 browser tests, syntax validation of
+- **Pass:** 46 rule/persistence tests, 26 browser tests, syntax validation of
   27 JavaScript files, production build, relative-path lint and diff check.
   The bundled web-game client also exercised movement/combat with no errors.
 - **Pass:** visual inspection of the entry, world HUD, attack telegraph, character

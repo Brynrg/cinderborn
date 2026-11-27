@@ -8,7 +8,7 @@ import {$,initUI,paintUI} from './ui.js';
 let storage;try{storage=window.localStorage;}catch{/* Play remains available without storage. */}
 let stored=load(storage),state=stored||createGame();
 let ui={screen:'entry',track:true,sound:false,saveFailed:false,lastModal:null,walking:false,approach:null};
-const canvas=$('world'),keys=new Set();let view,lastTime=performance.now(),lastPaint=0,lastSave=0,manualUntil=0,audio;
+const canvas=$('world'),keys=new Set();let view,lastTime=performance.now(),lastPaint=0,lastSave=0,manualClock=false,audio;
 const paused=()=>!!ui.screen||!!state.dialogue||state.mode!=='playing';
 function persist(){ui.saveFailed=!save(storage,state);stored=state;}
 function clearInput(){keys.clear();ui.walking=false;}
@@ -75,7 +75,8 @@ function advance(dt){
  ui.walking=input.up||input.down||input.left||input.right;tick(state,dt,input);
  if(ui.approach){const n=[...people(state),...NODES].find(n=>n.id===ui.approach);if(n&&dist(n,state.player)<90){state.path=[];talk(state,n.id);ui.approach=null;clearInput();persist();}}
 }
-function frame(now){const dt=Math.min(.05,(now-lastTime)/1000);lastTime=now;if(now>manualUntil)advance(dt);view=draw(canvas,state,ui);if(now-lastPaint>100){paintUI(state,ui,!!stored);lastPaint=now;}if(now-lastSave>1000&&ui.screen!=='entry'){persist();lastSave=now;}requestAnimationFrame(frame);}
-window.advanceTime=ms=>{manualUntil=performance.now()+120;for(let t=0;t<ms;t+=1000/60)advance(Math.min(1000/60,ms-t)/1000);persist();paint();};
+function frame(now){const dt=Math.min(.05,(now-lastTime)/1000);lastTime=now;if(!manualClock)advance(dt);view=draw(canvas,state,ui);if(now-lastPaint>100){paintUI(state,ui,!!stored);lastPaint=now;}if(now-lastSave>1000&&ui.screen!=='entry'){persist();lastSave=now;}requestAnimationFrame(frame);}
+window.advanceTime=ms=>{manualClock=true;for(let t=0;t<ms;t+=1000/60)advance(Math.min(1000/60,ms-t)/1000);persist();paint();};
+window.resumeTime=()=>{manualClock=false;lastTime=performance.now();};
 window.render_game_to_text=()=>JSON.stringify({mode:state.mode,screen:ui.screen,dialogue:state.dialogue,coordinateSystem:'World pixels. Origin northwest; x east, y south. WASD and click-to-move. Real-time combat.',world:WORLD,camera:view,player:{...state.player,maxHp:stats(state).maxHp},gear:state.gear,bag:state.bag,talents:state.talents,points:state.points,cooldowns:state.cooldowns,quests:state.quests,objective:objective(state),collected:state.collected,checkpoint:state.checkpoint,waystones:state.waystones,heat:state.heat,target:state.target,auto:state.auto,pathEnd:state.path.at(-1)||null,nearby:nearby(state),enemies:state.enemies.filter(e=>dist(e,state.player)<750).map(e=>({id:e.id,type:e.type,name:FOES[e.type].name,x:e.x,y:e.y,hp:e.hp,dead:e.dead,aggro:e.aggro,windup:e.windup,mark:e.mark})),npcs:people(state).filter(n=>dist(n,state.player)<750),notices:state.notices.map(n=>n.text),kills:state.kills,deaths:state.deaths,saveFailed:ui.saveFailed});
 new ResizeObserver(paint).observe($('rpg'));paint();requestAnimationFrame(frame);

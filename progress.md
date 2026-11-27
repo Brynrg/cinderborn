@@ -180,3 +180,11 @@ Main play should feel like adventuring through the world, not commanding a board
 - Version 0.5.0-rpg.2: all 46 rule/save tests and 25 browser tests pass again,
   including the new post-ending camp visit. Final skill-client camp traversal
   screenshot/state inspected; no errors. Publication uses the same GitHub route.
+- Root cause of the Linux targeting failure was the test clock resuming live
+  animation 120 ms after each controlled step. Reproduced 74 px of unintended
+  movement during a 500 ms gap. advanceTime now takes persistent clock control;
+  resumeTime explicitly restores real-time play. Normal play never invokes the
+  hook. Added a slow-input/resume regression; release is 0.5.0-rpg.3.
+- Final clock correction: all 46 rule/save tests and 26 browser tests pass;
+  syntax, build and relative-path checks also pass. The new regression proves
+  that delayed inputs do not advance the world and explicit resume restores it.

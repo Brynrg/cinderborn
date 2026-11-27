@@ -19,6 +19,17 @@ export const NODES=[
  {id:'exit',name:'Road to the Conclave',kind:'exit',x:2410,y:900},
 ];
 export const FOES={
+ ashhound:{name:'Slag hound',hp:115,atk:19,speed:125,range:60,xp:33,coins:16,color:'#a47657',kind:'beast'},
+ enforcer:{name:'Furnace enforcer',hp:160,atk:26,speed:90,range:70,xp:39,coins:20,color:'#a88365',kind:'blade'},
+ marksman:{name:'Cinder marksman',hp:120,atk:24,speed:75,range:235,xp:36,coins:20,color:'#998881',kind:'ranged'},
+ shade:{name:'Bound remembrance',hp:190,atk:31,speed:105,range:75,xp:48,coins:23,color:'#9eafd0',kind:'spirit'},
+ wisp:{name:'Fen lantern',hp:105,atk:22,speed:85,range:210,xp:36,coins:16,color:'#a5d9cb',kind:'spirit'},
+ stalker:{name:'Reed stalker',hp:230,atk:29,speed:130,range:70,xp:63,coins:32,color:'#87a594',kind:'beast'},
+ champion:{name:'Hollow champion',hp:280,atk:38,speed:95,range:75,xp:66,coins:30,color:'#b0b3be',kind:'warden'},
+ bailiff:{name:'The Brass Bailiff',hp:740,atk:76,speed:70,range:125,xp:114,coins:65,color:'#c79654',kind:'boss',sweep:'Furnace sweep',blast:'Slagfall'},
+ captain:{name:'The Red Captain',hp:480,atk:57,speed:95,range:110,xp:87,coins:45,color:'#b26f6b',kind:'boss',sweep:'Blood arc',blast:'Marked for debt'},
+ archivist:{name:'The Drowned Archivist',hp:1060,atk:94,speed:75,range:125,xp:156,coins:90,color:'#9bbdca',kind:'boss',sweep:'Tide of names',blast:'Drowning memory'},
+ judge:{name:'The First Judge',hp:1600,atk:112,speed:90,range:135,xp:228,coins:160,color:'#e1cfa1',kind:'boss',sweep:'Crownfall',blast:'Sentence of ash'},
  wolf:{name:'Ash wolf',hp:30,atk:8,speed:105,range:55,xp:18,coins:7,color:'#b6ab96',kind:'beast'},
  raider:{name:'Road reaver',hp:46,atk:10,speed:90,range:60,xp:24,coins:10,color:'#9d6656',kind:'blade'},
  jailer:{name:'Conclave jailer',hp:80,atk:12,speed:80,range:66,xp:45,coins:18,color:'#9a9f9e',kind:'warden'},
@@ -33,6 +44,12 @@ export const SPAWNS=[
  ['seal-warden','warden',2120,410],['arbiter','commander',2260,890],['hollowfang','hound',840,330],
 ];
 export const ITEMS={
+ forged:{name:'Emberforged edge',slot:'weapon',atk:14,rarity:'Rare',description:'+14 steel damage. The workers put their names in the temper.'},
+ focus:{name:'Lantern of the Cinder',slot:'weapon',atk:5,fire:22,rarity:'Rare',description:'+5 steel, +22 Firebrand damage. A flame held freely.'},
+ ironbound:{name:'Workers’ brigandine',slot:'armor',hp:70,rarity:'Rare',description:'+70 health. A hundred small plates, each a worker’s gift.'},
+ moonveil:{name:'Moonwell vestments',slot:'armor',hp:85,fire:8,rarity:'Rare',description:'+85 health, +8 fire damage. Syla’s debt, freely repaid.'},
+ remembrance:{name:'Blade of remembrance',slot:'weapon',atk:21,fire:10,rarity:'Rare',description:'+21 steel, +10 fire. The names along its spine will not fade.'},
+ accord:{name:'Mantle of the unbound',slot:'armor',hp:115,rarity:'Rare',description:'+115 health. Made for someone who chose their own name.'},
  worn:{name:'Worn exile blade',slot:'weapon',atk:0,rarity:'Common',description:'A serviceable edge. A long way from home.'},
  iron:{name:'Roadwarden steel',slot:'weapon',atk:4,rarity:'Fine',description:'+4 weapon damage. Forged for the long road.'},
  cinder:{name:'Cindersteel',slot:'weapon',atk:8,rarity:'Rare',description:'+8 weapon damage. The flame finally has a name.'},
@@ -45,7 +62,10 @@ export const SKILLS=[
  {id:'fire',key:'2',name:'Firebrand',icon:'✦',cost:18,cd:3,detail:'A ranged burst of forbidden flame. Raises suspicion.'},
  {id:'mend',key:'3',name:'Mend',icon:'✚',cost:25,cd:10,detail:'Restore health with Embercraft.'},
  {id:'dash',key:'4',name:'Veilstep',icon:'➜',cost:12,cd:3.5,detail:'Dash in your movement direction. Evade attacks during the dash.'},
+ {id:'nova',key:'5',name:'Cinderwake',icon:'✹',cost:32,cd:9,unlock:'forgeChoice',detail:'A ring of fire strikes nearby enemies. Unlocked in Chapter II.'},
+ {id:'aegis',key:'6',name:'Nameward',icon:'◇',cost:28,cd:15,unlock:'archiveChoice',detail:'Halve incoming damage for 5 seconds. Unlocked in Chapter III.'},
 ];
+export const TALENT_CAP=7;
 export const TALENTS={steel:{name:'Tempered steel',detail:'+2 sword damage per rank.'},flame:{name:'Living flame',detail:'+5 Firebrand damage per rank.'},resolve:{name:'Unbroken',detail:'+15 maximum health per rank.'}};
 export const LORE=[
  ['The Cinder','You are Ash, an exile wearing a dead noble’s signet. The Conclave accepts bloodlines, not refugees. Your forbidden fire could expose the lie—or keep your people alive.'],
@@ -60,8 +80,10 @@ export const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const levelCost=level=>35+level*20;
 export const enemyById=(s,id)=>s.enemies.find(e=>e.id===id);
-export function stats(s){return {maxHp:100+(s.player.level-1)*12+s.talents.resolve*15+(ITEMS[s.gear.armor]?.hp||0),atk:10+(s.player.level-1)*2+s.talents.steel*2+(ITEMS[s.gear.weapon]?.atk||0),fire:26+(s.player.level-1)*3+s.talents.flame*5};}
+export function stats(s){return {maxHp:100+(s.player.level-1)*12+s.talents.resolve*15+(ITEMS[s.gear.armor]?.hp||0),atk:10+(s.player.level-1)*2+s.talents.steel*2+(ITEMS[s.gear.weapon]?.atk||0),fire:26+(s.player.level-1)*3+s.talents.flame*5+(ITEMS[s.gear.weapon]?.fire||0)+(ITEMS[s.gear.armor]?.fire||0)};}
 
 export const skillCost=(s,id)=>id==='dash'&&s.quests.mara?8:SKILLS.find(k=>k.id===id)?.cost||0;
 export const skillCooldown=(s,id)=>id==='dash'&&s.quests.mara?2.6:SKILLS.find(k=>k.id===id)?.cd||0;
 export const potionHeal=s=>s.quests.brann?65:50;
+
+export const skillUnlocked=(s,id)=>{const k=SKILLS.find(k=>k.id===id);return !k?.unlock||!!s.campaign?.[k.unlock];};

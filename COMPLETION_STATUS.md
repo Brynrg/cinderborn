@@ -1,49 +1,54 @@
 # Cinderborn status
 
-Updated 2026-11-26. Version 0.5.1-rpg.2; critical RPG combat and quest-guidance revision.
+Updated 2026-11-26. Version 0.6.0-campaign.1; four-chapter campaign expansion.
 
-- **Pass:** the default game is a continuous, real-time action RPG with direct
-  Ash control, NPC quests, sword/fire/healing/dodge abilities, enemy telegraphs,
-  levels, talents, equipment, shopping, loot, rest and fast travel.
-- **Pass:** normal-input browser journeys complete both the oath/rescue route
-  and the defiant Seal Warden route, defeat the Arbiter and retain their ending
-  and progression on reload. Freed prisoners appear back at Emberrest.
-- **Pass:** optional Hollowfang encounter, mantle discovery/equipment, hearth
-  recovery, unlocked fast travel, telegraphs, dodge, death/reload/revival,
-  unavailable storage and corrupt-save recovery.
-- **Pass:** combat saves remain valid through every simulated frame including
-  enemy windup completion and death. New RPG saves are independent of old modes.
-- **Pass:** 55 rule/persistence tests, 27 browser tests, syntax validation of
-  30 JavaScript files, production build, relative-path lint and diff check.
-  The bundled web-game client also exercised movement/combat with no errors.
-- **Pass:** visual inspection of the entry, world HUD, attack telegraph, character
-  panel, map, progression and endings at desktop sizes; 390px map has no overflow.
-- **Pass:** the tactical trial and original Conclave remain available at
-  `trial.html` and `conclave.html`; their prior browser and rule tests still pass.
+- **Pass:** four connected regions: Ashen March, Cinderreach, Veiled Fen and
+  Crownless Citadel. Main quests, house champions, three new main bosses,
+  the optional Red Captain, regional side quests and a playable finale.
+- **Pass:** normal-input browser journeys complete both a steel/worker/ally
+  route to the covenant and a flame/house route to the crown, retaining their
+  progression and endings on reload. Both complete without deaths using active
+  defense, equipment and healing; this is not an exhaustive balance result.
+- **Pass:** six new equipment rewards, mutually exclusive crafted weapons,
+  Cinderwake and Nameward, seven talent ranks, Iona's family quest, moonwell
+  healing, Oryn's banner, the covenant bell puzzle and recovered journal records.
+- **Pass:** three ending rules and reactive epilogues. Covenant requires three
+  independent allies. Postgame exploration and the enraged First Judge echo.
+- **Pass:** existing RPG save migration, regional enemy persistence, cross-region
+  return travel, correct-hearth revival, quest gates and reward deduplication.
+- **Pass:** 66 rule/persistence tests and 29 built-browser tests; syntax check of
+  33 JavaScript files, production build, relative-path lint and diff check.
+- **Pass:** procedural world, chapter HUD, boss warnings, choices, journal and
+  endings inspected at desktop sizes; 390px map/HUD and seven-slot ability bar
+  checked for horizontal overflow. Bundled web-game client checked separately.
+- **Pass:** tactical trial and original Conclave remain at trial.html and
+  conclave.html with their existing saves and checks.
 - **Not Proven:** owner enjoyment, exhaustive balance, actual-phone usability,
   Safari/Firefox. Mobile support remains false in the manifest.
 
-## Critical play evidence
+## Playtest fixes
 
-Both baseline routes completed without dodge, Mend or draught use. After revision,
-active browser play completed both routes with no deaths: the oath route used
-three dodges; defiant used six dodges, two Mends and one draught. The old stationary
-approach loses to the Arbiter. These are demonstrated strategies, not exhaustive
-balance results. Boss warnings/recovery, Vesper's choice and side tracking were
-visually inspected. Old RPG saves retain progression and boss damage proportions.
+The first expansion route reached high levels too early; new quest and encounter
+XP was reduced to preserve growth through the later chapters. Actual movement
+checks caught path edges clipping scenery between clear grid centers. A pursuer
+could block revival after regional travel was added; recovery now clears pursuit
+before returning to the correct hearth. Chapter transitions ignore a harmless
+combat cooldown when no enemy remains, while active pursuit still blocks travel.
+Completed side quests fall back to the main objective; ready rewards use question
+marks. Forbidden-fire suspicion also attracts unwarded new sentinels.
 
 ## Publication
 
-Owner authorized iterative testing and republication through GitHub. Push this
-release to main, verify source CI and the shared deploy workflow, the auto-merging
-portal PR and the live manifest/assets. Never hand-copy artifacts into the portal.
-The final live receipt is recorded separately after deployment so that writing
-it does not trigger another publication.
+Owner authorized iterative testing and republication through GitHub. Publish
+main through the existing shared workflow and canonical portal ingest. Verify
+source CI, the merged portal PR, the live manifest and asset hashes, then complete
+the two full campaign routes on production. The live receipt is recorded
+separately after deployment so writing it does not trigger another publication.
 
 ## Structure and limits
 
 Vanilla JavaScript, HTML and CSS on the locked Vite toolchain. Three entries,
-relative assets, original procedural artwork and no new runtime dependencies.
-One solo opening region with two story branches and continued exploration after
-completion. No multiplayer backend or accounts. Browser-local saves only.
-The existing dependency audit findings remain outside this gameplay change.
+relative assets, procedural artwork and no new runtime dependencies. Solo play,
+local saves, no accounts or multiplayer backend. See CAMPAIGN_DESIGN.md for the
+new arc and RPG_DESIGN.md for the opening region's design. Existing dependency
+audit findings remain outside this gameplay change.

@@ -1,9 +1,12 @@
 import {NPCS,NODES,enemyById,dist,stats,potionHeal} from './data.js';
 import {gainXP,giveItem,notice} from './state.js';
-export function people(s){return NPCS.map(n=>s.quests[n.id]?{...n,x:n.id==='mara'?445:230,y:n.id==='mara'?1115:1080,title:'Safe at Emberrest'}:n);}
-export function nearby(s){return [...people(s),...NODES.filter(n=>!s.collected.includes(n.id)&&!(n.kind==='seal'&&s.quests.seal))].filter(n=>dist(n,s.player)<95).sort((a,b)=>dist(a,s.player)-dist(b,s.player))[0]||null;}
+import {regionData,nodes} from './regions.js';
+import {campaignObjective,campaignTalk,campaignDialogue,campaignChoose} from './campaign-story.js';
+export function people(s){return regionData(s.zone).npcs.map(n=>s.zone==='march'&&s.quests[n.id]?{...n,x:n.id==='mara'?445:230,y:n.id==='mara'?1115:1080,title:'Safe at Emberrest'}:n);}
+export function nearby(s){return [...people(s),...nodes(s).filter(n=>!s.collected.includes(n.id)&&!(n.kind==='seal'&&s.quests.seal))].filter(n=>dist(n,s.player)<95).sort((a,b)=>dist(a,s.player)-dist(b,s.player))[0]||null;}
 export function objective(s){
  const q=s.quests;
+ if(s.zone!=='march'||q.complete)return campaignObjective(s);
  if(!q.metRook)return {title:'A borrowed name',text:'Speak to Rook at Emberrest Camp.',target:NPCS[0]};
  if(!q.oath&&!q.defiant)return {title:'The champion’s bargain',text:'Find Vesper across the Ashen Causeway.',target:NPCS.find(n=>n.id==='vesper')};
  if(q.oath&&!q.mara)return {title:'Keep your word',text:'Defeat the north jailer, then free Mara.',target:enemyById(s,'north-jailer').dead?NPCS.find(n=>n.id==='mara'):enemyById(s,'north-jailer')};
@@ -14,7 +17,7 @@ export function objective(s){
  return {title:'A name of your own',text:'Explore, improve your equipment, or take another road bounty from Rook.',target:NPCS[0]};
 }
 export function talk(s,id){
- const n=[...people(s),...NODES].find(n=>n.id===id);if(!n||dist(n,s.player)>100){notice(s,'Move closer to interact.');return false;}
+ const n=[...people(s),...nodes(s)].find(n=>n.id===id);if(!n||dist(n,s.player)>100){notice(s,'Move closer to interact.');return false;}
  if(n.kind){
   if(n.kind==='rest'){
    if(s.combat>0){notice(s,'Lose your pursuers before resting.');return false;}
@@ -22,6 +25,7 @@ export function talk(s,id){
    if(!s.waystones.includes(n.id)){s.waystones.push(n.id);gainXP(s,20);}notice(s,'Rested · health, focus and three potions restored.');return true;
   }
   if(s.collected.includes(id))return false;
+  if(s.zone!=='march')return campaignTalk(s,n);
   if(n.kind==='herb'){s.collected.push(id);notice(s,`Silverleaf gathered (${s.collected.filter(k=>k.startsWith('herb')).length}/3).`);return true;}
   if(n.kind==='chest'){if(!enemyById(s,'hollowfang').dead){notice(s,'Hollowfang guards this cache.');return false;}s.collected.push(id);s.player.coins+=30;giveItem(s,'ranger');gainXP(s,30);return true;}
   if(n.kind==='seal'){if(!enemyById(s,'seal-warden').dead){notice(s,'The Seal Warden still binds this shrine.');return false;}if(!s.quests.seal){s.quests.seal=true;if(!s.quests.oath)s.quests.defiant=true;gainXP(s,45);notice(s,'Trial seal acquired. The road to the Conclave awaits.','gold');}return true;}
@@ -33,10 +37,11 @@ export function talk(s,id){
    if(!s.quests.complete){s.quests.complete=true;gainXP(s,100);s.player.coins+=60;giveItem(s,'cinder');}s.dialogue='ending';return true;
   }
  }
+ if(s.zone!=='march')return campaignTalk(s,n);
  s.dialogue=id;s.auto=false;s.path=[];return true;
 }
 const choice=(id,label,note='')=>({id,label,note});
-export function dialogue(s,id){const q=s.quests;
+export function dialogue(s,id){const q=s.quests;const expanded=campaignDialogue(s,id);if(expanded)return expanded;
  if(id==='rook')return !q.metRook?{speaker:'Rook',role:'Warden of the exiles',title:'A dead noble’s name. A living cause.',text:'That signet will get you past the houses, Ash. But the Conclave demands a trial seal. Vesper holds the eastern causeway. Find her. Judges brace against attacks—step out of their marked strikes, then hit while their guard is down. Iona can mend your wounds, and Sable will trade for better steel. Your people need you alive.',choices:[choice('begin','I’ll find Vesper.','Accept the main quest · 15 XP'),choice('bounty','I’ll help. What threatens the road?','Accept the story quest and a road bounty'),choice('close','Not yet.')]}
  :{speaker:'Rook',role:'Warden of the exiles',title:q.complete?'You came back with your own name.':'Keep the road open.',text:q.complete?'The houses have heard of the Cinder. Rest, explore the ruins, and prepare for what comes after the causeway. Our people still need a safe road.':'The five houses only see the crest. I see who carries it. Find Vesper, and choose what your word is worth.',choices:[...(q.bounty&&q.bountyKills>=3?[choice('bounty-reward','Collect the road bounty.','40 XP · 25 crowns')]:!q.bounty?[choice('bounty','Take a road bounty.','Defeat three wolves or reavers')]:[]),choice('close','Back to the road.')]};
  if(id==='iona')return {speaker:'Iona',role:'Herald & healer',title:'Fire can close a wound, too.',text:q.herbsDone?'Silverleaf and a steady hand. Your Mend is stronger now. Rest at a hearth or waystone to replenish your potions.':'Three silverleaf sprigs grow beside the western road. Bring them to me and I’ll show you how to make your flame heal. You can gather them while you explore.',choices:[...(q.herbsDone?[]:s.collected.filter(k=>k.startsWith('herb')).length>=3?[choice('herbs-reward','Deliver the silverleaf.','40 XP · Mend heals 10 more')]:[choice('herbs','I’ll look for silverleaf.','Track this optional quest')]),choice('close','Thank you, Iona.')]};
@@ -44,12 +49,13 @@ export function dialogue(s,id){const q=s.quests;
  if(id==='vesper')return {speaker:'Vesper',role:'Champion of House Kaelen',title:q.oath?'A promise is heavier than a seal.':q.defiant?'Then let your deeds speak.':'I know what burns beneath that crest.',text:q.oath?'The judges took Mara north and Brann to the quarry. Their jailers answer to the Conclave, not my house. Free them. Keep your promise.':q.defiant?'The northern shrine holds a second trial seal. Its warden will not give it willingly. You may still free the prisoners, should your conscience stir.':'Take my seal, Cinder—but save Mara and Brann. They built this crossing, and the judges put them in chains. Swear to free them and I will open your road. Refuse, and you must take the northern seal by force.',choices:!q.oath&&!q.defiant?[choice('oath','Swear to save them both.','Seal + two rescues · improved dodge and healing draughts'),choice('defy','I’ll win my own seal.','Fight the Seal Warden for its seal and armor · rescues optional'),choice('close','I need time.')]:[choice('close','We understand each other.')]};
  if((id==='mara'||id==='brann')&&q[id])return {speaker:id==='mara'?'Mara':'Brann',role:'Safe at Emberrest',title:'You kept the road open for us.',text:id==='mara'?'I taught you the wayfinder’s step before leaving: your Veilstep now costs 8 focus and recovers in 2.6 seconds. You gave us a road home. Let me help you stay on yours.':'My field kit is yours. Healing draughts now restore 65 health. Rook has work for me here. Whatever name the houses call you, I will remember yours.',choices:[choice('close','Stay safe.')]};
  if(id==='mara'||id==='brann'){const jailer=enemyById(s,id==='mara'?'north-jailer':'south-jailer');return {speaker:id==='mara'?'Mara':'Brann',role:'Prisoner of the Conclave',title:jailer.dead?'You came back for us.':'The jailer has the key.',text:jailer.dead?'I know a path back to Emberrest. We can reach the camp while you draw the judges east. Tell Vesper her promise was kept.':'Defeat the jailer nearby. Then we can get these chains off.',choices:jailer.dead?[choice('free-'+id,'Unlock the chains.',id==='mara'?'50 XP · Veilstep: 8 focus, 2.6s cooldown':'50 XP · healing draughts restore 65 health')]:[choice('close','Stay low. I’ll get the key.')]};}
- if(id==='ending')return {speaker:'The Cinder',role:'Chapter one complete',title:q.oath?'A name kept. A promise honored.':'Beyond the borrowed name.',text:`The Arbiter falls, and the Conclave road opens. ${q.mara&&q.brann?'Mara and Brann are safe at Emberrest.':q.mara||q.brann?'One prisoner made it back. The other remains in chains.':'Two prisoners remain behind. Victory has a cost.'} The five houses will hear of you. Your journey in this region continues—explore its secrets, finish side quests, and strengthen Ash.`,choices:[choice('close','Return to the world.','Cindersteel acquired · 100 XP · 60 crowns')]};
+ if(id==='ending')return {speaker:'The Cinder',role:'Chapter one complete',title:q.oath?'A name kept. A promise honored.':'Beyond the borrowed name.',text:`The Arbiter falls, and the Conclave road opens. ${q.mara&&q.brann?'Mara and Brann are safe at Emberrest.':q.mara||q.brann?'One prisoner made it back. The other remains in chains.':'Two prisoners remain behind. Victory has a cost.'} The five houses will hear of you. Beyond the crossing, the foundries of Cinderreach burn through the night. Auren’s signet grows warm in your hand. The road leads to House Vorthos—and the first answer to what killed the man whose name you carry.`,choices:[choice('continue-forge','Follow the road to Cinderreach.','Begin Chapter II · equipment and progress carry forward'),choice('close','Stay in the Ashen March.','Finish old promises; leave by this road whenever you are ready')]};
  return {speaker:'The road',title:'A moment to breathe.',text:'',choices:[choice('close','Continue.')]};
 }
 export function choose(s,id){
  const q=s.quests,who=s.dialogue;if(!who)return false;
  const allowed=dialogue(s,who).choices.some(c=>c.id===id);if(!allowed)return false;
+ if(campaignChoose(s,id))return true;
  if((id==='begin'||id==='bounty')&&!q.metRook){q.metRook=true;gainXP(s,15);notice(s,'Quest accepted · The champion’s bargain','gold');}
  if(id==='bounty'){q.bounty=true;q.bountyKills=0;notice(s,'Road bounty · defeat three wolves or reavers.');}
  if(id==='bounty-reward'&&q.bounty&&q.bountyKills>=3){q.bounty=false;q.bountyRuns++;s.player.coins+=25;gainXP(s,40);notice(s,'Road bounty complete · 25 crowns','gold');}

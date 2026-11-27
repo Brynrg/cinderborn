@@ -224,3 +224,43 @@ Main play should feel like adventuring through the world, not commanding a board
 - Final clarity revision: Pass — 55 rule/save tests and 27 browser tests,
   syntax/build/path checks. Inspected the corrected named recovery banner;
   both active routes and all previous entries still pass.
+
+## 2026-11-26 — Four-chapter campaign expansion (in progress)
+
+- Owner requested: “OK now make it bigger. fill out the game and story”.
+  Continuing the previously authorized implementation/testing/GitHub publication path.
+- Added Cinderreach, the Veiled Fen and the Crownless Citadel beyond the Ashen
+  March. New characters include the other four house champions, Anja and Edda.
+  Auren's signet, the stolen census and Iona's family connect the new chapters.
+- Added guarded furnace valves, archive records, house beacons, three main bosses
+  and an optional Red Captain; crafting, worker supplies, Oryn mercy/debt,
+  moonwell healing, a bell/reliquary puzzle, letters and a persistent journal.
+- Three final choices (freedom, crown, covenant) produce reactive epilogues.
+  Covenant requires three independently earned allies. An optional enraged
+  First Judge echo is repeatable after the ending.
+- Added six equipment rewards, Cinderwake/Nameward unlocks, deeper talents,
+  per-region terrain/collision/navigation, cross-region hearth travel and
+  migration of existing RPG saves without changing their storage key.
+- First full playthrough exposed a stale combat-timer block on chapter travel
+  and path edges clipping scenery between clear navigation cells. Both fixed;
+  regression tests walk actual routes, not just check that a path was returned.
+- Reduced expansion XP after the first forge playthrough leveled too quickly.
+  All existing March encounter damage/timing retained; only the Arbiter and
+  First Judge enrage. Expanded combat fixture chooses a clear dodge direction.
+- Covenant route completed through all chapters, optional quests, ending,
+  reload, earlier-region return and the Hall of Echoes. Final release checks
+  and a second route are still in progress.
+
+### Expansion release checks
+
+- Pass: 66 rule/persistence tests, all 29 built-browser tests (two complete
+  four-chapter journeys plus existing RPG, tactical and original mode checks).
+  Both campaign strategies finish with zero deaths using active combat.
+- Pass: JavaScript syntax (33 files), production build, relative asset lint,
+  diff check and the bundled web-game client. No runtime errors in the journeys.
+- Pass: visual inspection of Cinderreach, the Fen, the Citadel, boss telegraphs,
+  final choices, ending and journal; 390px map/HUD and ability bar fit the viewport.
+  A final map-label adjustment separates sanctuary and bell captions.
+- Added regression coverage for death while pursued, new-region fire suspicion
+  respecting quest wards, and completed side tracking returning to the main story.
+- Version 0.6.0-campaign.1. GitHub publication and production verification next.

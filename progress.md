@@ -299,3 +299,36 @@ Main play should feel like adventuring through the world, not commanding a board
   final lanes, hollow rings, echo briefing and bundled-client screenshot/state.
   Canonical GitHub deployment/live verification follow; receipt stored separately
   after publication. Owner enjoyment remains Not Proven.
+
+
+## Art and animation revision — 2026-11-26
+
+- User requested skills/free-resource research, followed by implementation.
+- Selected Pixel Frog's original Tiny Swords CC0 archive (upload 9428013),
+  verified separately from the differently licensed current pack. Vendored 54
+  unchanged PNGs (under 1 MB) with source paths and SHA-256 provenance.
+- Added sprite loading, presentation-only animation, scenery composition,
+  spell effects, original ability emblems, dialogue portraits and art credits.
+- First visual review exposed roof occlusion and costly per-frame filters.
+  Roofs now fade around Ash; cached treatments reduced a local 20/30-frame
+  advance-and-render check from about 200 ms to 4 ms per frame. Broader runtime
+  performance and campaign regression checks follow.
+
+- Both campaign routes passed the first sprite-renderer playthrough. A new UI
+  test approached the hearth instead of Rook; corrected its route to target Rook
+  explicitly through normal controls.
+- Replaced abstract quest symbols with physical valves, flowers, papers, bells,
+  beacons, banners and an echo arch. Added original SVG ability emblems, larger
+  traveler sprites, dialogue portraits, distinct ground treatments and textured
+  bridges. Creature frames are cached with crisp pixel edges.
+- Candidate 0.7.0-art.1. Full 78-rule/31-browser regression, final screenshot
+  review, GitHub publication and live journey verification are next.
+
+- Pass: 78 rules/art tests, 31 built-browser tests, 42-file syntax check, production
+  build, relative-path lint and diff check. Reviewed title, portraits, narrow
+  Fen HUD, bosses, final arena and the bundled-client screenshot/state.
+- High-DPI probe passed: 1280x800 viewport produces a 2560x1600 canvas, all 54
+  assets decoded. The local 30-frame advance-and-render sample averaged
+  10.9 ms; this is a bounded machine-specific measurement.
+- Publishing through the canonical GitHub pipeline. Production receipts will
+  be written outside the repository after deployment to avoid another release.

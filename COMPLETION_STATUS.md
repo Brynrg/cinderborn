@@ -1,6 +1,6 @@
 # Cinderborn status
 
-Updated 2026-11-26. Version 0.6.1-campaign.1; critical campaign pacing and combat revision.
+Updated 2026-11-26. Version 0.7.0-art.1; illustrated world and animation revision.
 
 - **Pass:** four connected regions: Ashen March, Cinderreach, Veiled Fen and
   Crownless Citadel. Main quests, house champions, three new main bosses,
@@ -16,8 +16,8 @@ Updated 2026-11-26. Version 0.6.1-campaign.1; critical campaign pacing and comba
   independent allies. Postgame exploration, three rotating First Judge echo patterns and paid talent retraining.
 - **Pass:** existing RPG save migration, regional enemy persistence, cross-region
   return travel, correct-hearth revival, quest gates and reward deduplication.
-- **Pass:** 74 rule/persistence tests and 29 built-browser tests; syntax check of
-  35 JavaScript files, production build, relative-path lint and diff check.
+- **Pass:** 78 rule/persistence/art tests and 31 built-browser tests; syntax check of
+  42 JavaScript files, production build, relative-path lint and diff check.
 - **Pass:** procedural world, chapter HUD, boss warnings, choices, journal and
   endings inspected at desktop sizes; 390px map/HUD and seven-slot ability bar
   checked for horizontal overflow. Bundled web-game client checked separately.
@@ -25,6 +25,18 @@ Updated 2026-11-26. Version 0.6.1-campaign.1; critical campaign pacing and comba
   conclave.html with their existing saves and checks.
 - **Not Proven:** owner enjoyment, exhaustive balance, actual-phone usability,
   Safari/Firefox. Mobile support remains false in the manifest.
+
+## Art and animation
+
+Pixel Frog's original CC0 Tiny Swords release supplies 54 unchanged PNGs under
+1 MB, with exact source filenames and hashes. Later differently licensed packs
+are excluded. Original creature drawings, object illustrations, spell effects,
+ability emblems and region treatments complete the presentation.
+
+Frame animation covers idle, walking, attacks, casts, hit reactions and death.
+Decorative motion respects reduced-motion preferences. Presentation does not
+enter saves or change gameplay collision. UI portraits and art credits are
+linked into the game. Cached color treatments avoid per-frame filter cost.
 
 ## Playtest fixes
 

@@ -110,3 +110,17 @@ simulation, `render.js` canvas artwork, `ui.js` panels, and `main.js` input/loop
 simulation for controlled tests. Calling `advanceTime` pauses the wall clock until
 `resumeTime()` is called, so slow automation cannot move targets between inputs.
 No runtime dependencies were added.
+
+## Illustrated world and animation
+
+The four regions now use detailed CC0 sprite artwork, animated characters and
+foliage, physical quest objects, flowing water, region atmosphere and spell
+effects. Ash gains an armored silhouette when equipped; bosses wind up and
+strike, creatures react to damage, and defeated enemies briefly fade. Foreground
+roofs and trees fade around Ash. Decorative motion respects reduced-motion
+preferences. Interface emblems scale cleanly and dialogue includes portraits.
+
+See [ART_DIRECTION.md](ART_DIRECTION.md) for the resource comparison and visual
+architecture. In-game Art credits link to Pixel Frog's original CC0 Tiny Swords
+release and the exact provenance of the shipped files. No paid packs or new
+runtime dependencies were added.

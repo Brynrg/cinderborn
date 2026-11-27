@@ -5,7 +5,7 @@
   "framework": "vite",
   "category": "rpg",
   "supportsMobile": false,
-  "version": "0.6.1-campaign.1",
+  "version": "0.7.0-art.1",
   "emoji": "\ud83d\udd25",
   "entry": "index.html",
   "buildCommand": "npm run build",

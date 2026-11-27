@@ -1,0 +1,24 @@
+/* Quiet ink-and-brass framing keeps the illustrated world in focus. */
+:root{--ink:#172634;--gold:#e6c385;--muted:#b3bcb8}
+.glass{background:linear-gradient(135deg,#162633ed,#152c2bea);border-color:#d3b98155;box-shadow:inset 0 1px #f7dfb912,0 5px 24px #07131e40}
+#top{background:linear-gradient(#142332e8,#15253500)}
+.hero-sigil{background:linear-gradient(#d99455,#995d43);border:1px solid #ffd49b66;display:grid;place-items:center}
+.hero-sigil svg{width:27px;height:29px}
+#hotbar button{background:linear-gradient(140deg,#344644,#1b2e35);border-color:#c6b48255;box-shadow:inset 0 1px #f6db9d12}
+#hotbar button:hover{background:linear-gradient(140deg,#4d5d50,#293e42);box-shadow:inset 0 0 14px #f8d29916}
+#hotbar button b{height:31px;display:block;margin-bottom:3px}
+#hotbar button b svg{width:29px;height:29px;filter:drop-shadow(0 2px 2px #111b24)}
+#panel{background:linear-gradient(135deg,#203438fa,#12262ffa);border-color:#d9bd7e77;box-shadow:inset 0 2px #ffe8ae18,0 30px 100px #07132199}
+#overlay.entry{background:linear-gradient(90deg,#14233065,#0e25264d);backdrop-filter:blur(2px)}
+#overlay.entry #panel{background:linear-gradient(145deg,#1b3039ed,#14282df5);border-top:3px solid #d7b17a}
+.entry-mark{color:#efcb8d;text-shadow:0 0 28px #ffc67855}
+.sprite-portrait{width:76px;height:76px;flex:0 0 76px;overflow:hidden;position:relative;border:1px solid #d1b47a88;background:radial-gradient(ellipse at 50% 70%,#6d704c,#263f43 65%);border-radius:50%;box-shadow:inset 0 0 15px #0d1f31,0 0 0 4px #ddb57b0b}
+.sprite-portrait img{position:absolute;width:921.6px;height:auto;max-width:none;left:-39px;top:-34px;image-rendering:pixelated}
+.sprite-portrait img.archer-sheet{width:1228.8px}
+.dialogue-person{gap:19px;margin-bottom:24px}
+.item-icon svg{width:30px;height:34px}
+.location{background:#172d34e6;border:1px solid #c7b98733}
+#combat-cue.danger{background:#542b28f5;border-color:#f0a36c;box-shadow:0 4px 22px #190d1444}
+#combat-cue.opening{background:#153b32f5;border-color:#a1dfbc}
+.legacy-links{flex-wrap:wrap;gap:10px 20px}
+@media(max-width:650px){#hotbar button b{height:26px}#hotbar button b svg{width:24px;height:24px}.sprite-portrait{width:64px;height:64px;flex-basis:64px}.sprite-portrait img{left:-45px;top:-39px}.dialogue-person{gap:14px}}

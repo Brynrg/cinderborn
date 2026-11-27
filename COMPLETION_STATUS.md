@@ -1,6 +1,6 @@
 # Cinderborn status
 
-Updated 2026-11-26. Version 0.5.1-rpg.1; critical RPG combat and quest-guidance revision.
+Updated 2026-11-26. Version 0.5.1-rpg.2; critical RPG combat and quest-guidance revision.
 
 - **Pass:** the default game is a continuous, real-time action RPG with direct
   Ash control, NPC quests, sword/fire/healing/dodge abilities, enemy telegraphs,
@@ -13,7 +13,7 @@ Updated 2026-11-26. Version 0.5.1-rpg.1; critical RPG combat and quest-guidance 
   unavailable storage and corrupt-save recovery.
 - **Pass:** combat saves remain valid through every simulated frame including
   enemy windup completion and death. New RPG saves are independent of old modes.
-- **Pass:** 54 rule/persistence tests, 27 browser tests, syntax validation of
+- **Pass:** 55 rule/persistence tests, 27 browser tests, syntax validation of
   30 JavaScript files, production build, relative-path lint and diff check.
   The bundled web-game client also exercised movement/combat with no errors.
 - **Pass:** visual inspection of the entry, world HUD, attack telegraph, character

@@ -216,3 +216,11 @@ Main play should feel like adventuring through the world, not commanding a board
   damage proportions preserved and completed bosses left defeated. Owner fun,
   exhaustive balance and phone/Safari/Firefox acceptance remain Not Proven.
   Canonical GitHub publication and separate live receipt follow.
+- Final live screenshot review found nearby-boss guidance could describe an
+  unselected boss instead of the target's recovery. Guidance now prioritizes a
+  marked hit that threatens Ash, then the selected boss, and names the enemy.
+  It also confirms when Ash is clear of the marked ground. Added a regression;
+  version 0.5.1-rpg.2 carries this final clarity fix.
+- Final clarity revision: Pass — 55 rule/save tests and 27 browser tests,
+  syntax/build/path checks. Inspected the corrected named recovery banner;
+  both active routes and all previous entries still pass.

@@ -9,9 +9,12 @@ export function attackPlan(e,p){
 }
 export function combatReadout(s,e){
  if(!e||e.dead)return null;
- if(e.windup>0&&e.mark)return {tone:'danger',title:e.mark.name||'Incoming strike',text:`${e.mark.hint||'Leave the red circle'} · ${e.windup.toFixed(1)}s`,progress:e.windup/(e.mark.duration||.65)};
- if(isBoss(e)&&e.recovery>0)return {tone:'opening',title:'Opening — strike now',text:`+50% damage · ${e.recovery.toFixed(1)}s`,progress:e.recovery/2.4};
- if(isBoss(e))return {tone:'guarded',title:e.type==='commander'&&e.hp<FOES[e.type].hp/2?'Enraged · quicker attacks':'Guard raised',text:'Reduced damage. Evade the attack, then punish the opening.',progress:0};
+ if(e.windup>0&&e.mark)return {tone:'danger',title:e.mark.name||'Incoming strike',text:`${FOES[e.type].name} · ${dist(s.player,e.mark)<e.mark.r+12?(e.mark.hint||'Leave the red circle'):'You are clear'} · ${e.windup.toFixed(1)}s`,progress:e.windup/(e.mark.duration||.65)};
+ if(isBoss(e)&&e.recovery>0)return {tone:'opening',title:'Opening — strike now',text:`${FOES[e.type].name} · +50% damage · ${e.recovery.toFixed(1)}s`,progress:e.recovery/2.4};
+ if(isBoss(e))return {tone:'guarded',title:e.type==='commander'&&e.hp<FOES[e.type].hp/2?'Enraged · quicker attacks':'Guard raised',text:`${FOES[e.type].name} · Evade, then attack the opening.`,progress:0};
  return null;
 }
-export function threat(s){return s.enemies.filter(e=>!e.dead&&e.aggro&&(isBoss(e)||e.windup>0)&&dist(e,s.player)<450).sort((a,b)=>(a.windup>0?-1:0)-(b.windup>0?-1:0)||dist(a,s.player)-dist(b,s.player))[0];}
+export function threat(s){
+ const priority=e=>e.mark&&dist(s.player,e.mark)<e.mark.r+12?0:e.id===s.target?1:2;
+ return s.enemies.filter(e=>!e.dead&&e.aggro&&(isBoss(e)||e.windup>0)&&dist(e,s.player)<450).sort((a,b)=>priority(a)-priority(b)||(priority(a)===0?a.windup-b.windup:dist(a,s.player)-dist(b,s.player)))[0];
+}

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createGame,save,load,validSave} from './state.js';
 import {enemyById,stats,FOES,skillCost,skillCooldown,potionHeal} from './data.js';
-import {attackPlan,combatReadout} from './encounters.js';
+import {attackPlan,combatReadout,threat} from './encounters.js';
 import {cast,tick,selectTarget} from './engine.js';
 import {talk,choose} from './story.js';
 import {trackedObjective,questMark} from './guidance.js';
@@ -14,3 +14,5 @@ test('rescue rewards improve the actual dash and potion, and are shown before ch
 test('side tracking advances from gathering and kills to the correct reward NPC',()=>{const s=createGame();s.quests.herbs=true;assert.equal(trackedObjective(s,'herbs').target.kind,'herb');s.collected=['herb-a','herb-b','herb-c'];assert.equal(trackedObjective(s,'herbs').target.id,'iona');assert.equal(questMark(s,'iona'),'?');s.quests.herbsDone=true;assert.equal(questMark(s,'iona'),'✓');s.quests.bounty=true;s.quests.bountyKills=3;assert.equal(trackedObjective(s,'bounty').target.id,'rook');});
 test('accepting Rook’s bounty first also starts the main quest without resetting the bounty',()=>{const s=createGame();Object.assign(s.player,{x:435,y:870});talk(s,'rook');choose(s,'bounty');assert.ok(s.quests.metRook);assert.ok(s.quests.bounty);s.quests.bountyKills=2;talk(s,'rook');assert.equal(choose(s,'bounty'),false);assert.equal(s.quests.bountyKills,2);});
 test('prior RPG saves retain boss damage proportion, completed encounters and all progression',()=>{const s=createGame();delete s.encounterVersion;enemyById(s,'seal-warden').hp=82.5;enemyById(s,'arbiter').dead=true;enemyById(s,'arbiter').hp=0;s.quests.metRook=true;let value;const storage={setItem:(k,v)=>value=v,getItem:()=>value};save(storage,s);const loaded=load(storage);assert.ok(loaded);assert.equal(enemyById(loaded,'seal-warden').hp,190);assert.equal(enemyById(loaded,'arbiter').dead,true);assert.ok(loaded.quests.metRook);assert.equal(loaded.encounterVersion,2);});
+
+test('combat guidance prefers an imminent hit, then the selected boss recovery',()=>{const s=createGame(),warden=enemyById(s,'seal-warden'),arbiter=enemyById(s,'arbiter');Object.assign(s.player,{x:2120,y:650});Object.assign(warden,{x:2120,y:410,aggro:true,recovery:2});Object.assign(arbiter,{x:2120,y:790,aggro:true});s.target=warden.id;assert.equal(threat(s).id,warden.id);assert.match(combatReadout(s,threat(s)).text,/Seal Warden/);arbiter.mark={x:s.player.x,y:s.player.y,r:90};arbiter.windup=.7;assert.equal(threat(s).id,arbiter.id);s.player.x+=120;assert.equal(threat(s).id,warden.id);});

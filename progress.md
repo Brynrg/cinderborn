@@ -170,3 +170,7 @@ Main play should feel like adventuring through the world, not commanding a board
 - Version 0.5.0-rpg.1. Canonical GitHub publication and live verification follow.
   Scope remains a solo opening region; owner enjoyment and phone/Safari/Firefox
   acceptance are Not Proven.
+- Linux CI found a journey assertion race: a weak selected enemy can die from
+  the first automatic steel strike before the selection assertion runs. The
+  journey now accepts the observed dead enemy as the expected combat outcome;
+  living enemies must still be correctly targeted. Rechecking before final receipt.

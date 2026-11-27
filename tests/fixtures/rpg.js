@@ -11,7 +11,7 @@ export async function fight(page,id){
  let s=await game(page),e=s.enemies.find(e=>e.id===id);if(!e||e.dead)return;
  const {cx,cy,w,h,scale}=s.camera,x=(e.x-cx)*scale+w/2,y=(e.y-cy)*scale+h/2;
  await page.locator('#world').click({position:{x,y}});
- s=await game(page);assert.equal(s.target,id,`target ${id}`);
+ s=await game(page);e=s.enemies.find(e=>e.id===id);if(e?.dead)return;assert.equal(s.target,id,`target ${id}`);
  for(let i=0;i<120;i++){
   s=await game(page);e=s.enemies.find(e=>e.id===id);if(!e||e.dead)return;
   assert.notEqual(s.mode,'fallen',`fell fighting ${id}`);

@@ -136,3 +136,37 @@ FFT_INSPIRATION.md for the adaptation and source links. Tests/play balance pendi
   final production identity and four live journeys will be recorded separately.
 - Limits: deterministic encounters on one map; no campaign/job advancement yet.
   Owner enjoyment, exhaustive balance and physical-phone testing remain Not Proven.
+
+## Genre rebuild — solo MMORPG feel — 2026-11-26
+
+Owner rejected tactical gameplay and requested a whole-game rethink while keeping
+story/world. Clarified: MMORPG feel first, solo exploration/combat/quests/progression.
+Implementing a real-time top-down RPG with direct Ash control, open region, NPC
+quest chains, equipment, XP/levels/talents, cooldown skills, bosses, discovery and
+persistent saves. Existing tactical and Conclave entries/saves remain separate.
+Main play should feel like adventuring through the world, not commanding a board.
+
+- Implemented the new RPG entry with real-time movement/targeting, sword/fire/heal/
+  dodge skills, telegraphed enemy attacks, boss phase, camp/roads/ruins/river,
+  NPC conversations, two main-story branches, side quests, XP/levels/talents,
+  equipment, shop, loot, rest/checkpoints/fast travel, death recovery and saves.
+- Both normal-input browser journeys reached chapter completion: Vesper's oath
+  with both rescues, and the defiant Seal Warden path with optional rescues skipped.
+  Gathering, bounty turn-in, shopping, equipment and talent choices occur en route.
+- Found/fixed navigation to clear points inside partially blocked grid cells
+  (notably beside Sable's building); added a regression. Added rescued NPCs to
+  the camp so the story outcome changes the world. Shop shows available crowns
+  and disables unaffordable purchases. New save is isolated from all old modes.
+- Visually inspected the entry, world HUD, progression scene, ending, character
+  panel and 390px map. The skill client exercises continuous movement and combat.
+  Complete release checks and live verification pending.
+- Final review caught a floating-point enemy windup below zero, which invalidated
+  combat saves; clamped it and added a frame-by-frame combat/death save regression.
+- Release checks: Pass — 46 rule/persistence tests, 25 browser tests, 27-file
+  syntax check, production build, relative-path lint and diff check. Both new
+  story routes, optional Hollowfang/loot/equipment, rest/fast travel, telegraphs,
+  dodge, death/reload/revival and all legacy browser journeys pass. The final
+  skill-client screenshot/state has no errors; inspected full HUD and panels.
+- Version 0.5.0-rpg.1. Canonical GitHub publication and live verification follow.
+  Scope remains a solo opening region; owner enjoyment and phone/Safari/Firefox
+  acceptance are Not Proven.

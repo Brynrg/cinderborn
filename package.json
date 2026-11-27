@@ -1,6 +1,6 @@
 {
   "name": "cinderborn",
-  "version": "0.4.0-trial.3",
+  "version": "0.5.0-rpg.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,7 +11,7 @@
     "lint:paths": "node scripts/check-relative-paths.mjs",
     "test": "npm run test:rules && playwright test",
     "deploy:portal": "npm run build && node scripts/deploy-portal.mjs",
-    "test:rules": "node --test src/trial/*.test.js"
+    "test:rules": "node --test src/trial/*.test.js src/rpg/*.test.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",

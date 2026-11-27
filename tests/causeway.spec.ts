@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { oathRoute, fireRoute } from './fixtures/routes.js';
-const URL='http://localhost:4173/';
+const URL='http://localhost:4173/trial.html';
 const game=(page:Page)=>page.evaluate(()=>JSON.parse((window as any).render_game_to_text()));
 const action=(page:Page,id:string)=>page.locator(`[data-action="${id}"]`).click();
 const hex=(page:Page,q:number,r:number)=>page.locator(`[data-hex="${q},${r}"]`).click();

@@ -2,7 +2,7 @@ import {test,expect,type Page} from '@playwright/test';
 import {lastLightRoute,ashfallRoute} from './fixtures/contracts.js';
 const state=(page:Page)=>page.evaluate(()=>JSON.parse((window as any).render_game_to_text()));
 const action=(page:Page,id:string)=>page.locator(`[data-action="${id}"]`).click();
-async function begin(page:Page,id:string){await page.goto('http://localhost:4173/');await action(page,'contracts');await action(page,`contract:${id}`);await action(page,'deploy-contract');}
+async function begin(page:Page,id:string){await page.goto('http://localhost:4173/trial.html');await action(page,'contracts');await action(page,`contract:${id}`);await action(page,'deploy-contract');}
 async function step(page:Page,a:any){
   if(a.unitId)await page.locator(`[data-unit="${a.unitId}"]`).click();
   if(a.type==='move')await page.locator(`[data-hex="${a.to.q},${a.to.r}"]`).click();

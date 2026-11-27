@@ -1,40 +1,40 @@
 # Cinderborn status
 
-Updated 2026-11-26. Version 0.4.0-trial.3; FFT-inspired contracts and class techniques.
+Updated 2026-11-26. Version 0.5.0-rpg.1; solo RPG genre rebuild.
 
-- **Pass:** three contracts with distinct starts, deadlines and speed targets;
-  limited class techniques, high-ground damage/forecasts, numbered enemy order,
-  and persistent wins/best rounds/honors. Last Light completes in 3 rounds;
-  Ashfall in 9, both with all six allies alive and both prisoners safe.
-- **Pass:** the solo round-4 shortcut is closed. The shrine requires defeating
-  its warden or gaining Vesper’s seal. In the full trial, inspection arrives in round 4 and nearby
-  hostiles prevent extraction. Steel against Arbiters keeps house cover intact.
-- **Pass:** enemy plans reserve destinations and follow reachable paths; their
-  declared target tiles remain fixed throughout the player’s turn.
-- **Pass:** objective links, explicit activation budgets, Next ready selection,
-  contextual explanations, exact health forecasts, damage/heal feedback,
-  survivor honors, desktop layout and a scrollable narrow layout.
-- **Pass:** v1/v2 saves migrate into v3 without modifying the original slot.
-  Pending choices, used actions, damaged units and completed endings persist.
-  Original Conclave remains available at `conclave.html` with separate saves.
-- **Pass:** 31 rule/persistence tests and 19 browser tests, syntax validation,
-  production build and relative-path lint. Normal-control journeys complete the
-  oath route in round 5 and the combat route in round 9, each with six survivors
-  and both prisoners rescued. These are demonstrated solutions, not minimums.
+- **Pass:** the default game is a continuous, real-time action RPG with direct
+  Ash control, NPC quests, sword/fire/healing/dodge abilities, enemy telegraphs,
+  levels, talents, equipment, shopping, loot, rest and fast travel.
+- **Pass:** normal-input browser journeys complete both the oath/rescue route
+  and the defiant Seal Warden route, defeat the Arbiter and retain their ending
+  and progression on reload. Freed prisoners appear back at Emberrest.
+- **Pass:** optional Hollowfang encounter, mantle discovery/equipment, hearth
+  recovery, unlocked fast travel, telegraphs, dodge, death/reload/revival,
+  unavailable storage and corrupt-save recovery.
+- **Pass:** combat saves remain valid through every simulated frame including
+  enemy windup completion and death. New RPG saves are independent of old modes.
+- **Pass:** 46 rule/persistence tests, 25 browser tests, syntax validation of
+  27 JavaScript files, production build, relative-path lint and diff check.
+  The bundled web-game client also exercised movement/combat with no errors.
+- **Pass:** visual inspection of the entry, world HUD, attack telegraph, character
+  panel, map, progression and endings at desktop sizes; 390px map has no overflow.
+- **Pass:** the tactical trial and original Conclave remain available at
+  `trial.html` and `conclave.html`; their prior browser and rule tests still pass.
 - **Not Proven:** owner enjoyment, exhaustive balance, actual-phone usability,
   Safari/Firefox. Mobile support remains false in the manifest.
 
 ## Publication
 
-Owner authorized testing and republication through GitHub. Push this release
-once to main, then verify source CI, the shared deploy workflow, auto-merging
-portal PR and live manifest/assets. Never hand-copy artifacts into the portal.
+Owner authorized iterative testing and republication through GitHub. Push this
+release to main, verify source CI and the shared deploy workflow, the auto-merging
+portal PR and the live manifest/assets. Never hand-copy artifacts into the portal.
 The final live receipt is recorded separately after deployment so that writing
 it does not trigger another publication.
 
 ## Structure and limits
 
-Vanilla JavaScript, HTML and CSS on the locked Vite toolchain. Two entries,
-relative asset paths, no runtime packages or external artwork. Deterministic,
-three-contract tactics on one map with six active allies maximum and browser-local saves.
+Vanilla JavaScript, HTML and CSS on the locked Vite toolchain. Three entries,
+relative assets, original procedural artwork and no new runtime dependencies.
+One solo opening region with two story branches and continued exploration after
+completion. No multiplayer backend or accounts. Browser-local saves only.
 The existing dependency audit findings remain outside this gameplay change.

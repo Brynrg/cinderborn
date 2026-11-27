@@ -7,7 +7,7 @@ export default defineConfig({
   base: "./",
   build: {
     target: "es2022",
-    rollupOptions: { input: { trial: "index.html", conclave: "conclave.html" } },
+    rollupOptions: { input: { rpg: "index.html", trial: "trial.html", conclave: "conclave.html" } },
     sourcemap: false,
   },
 });

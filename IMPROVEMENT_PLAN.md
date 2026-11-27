@@ -1,54 +1,34 @@
-# After the Causeway playtest
+# After the RPG rebuild
 
-Updated 2026-11-26. This replaces the inherited game-template backlog.
-
-Judge the three contract openings and class techniques before expanding to a campaign.
-No deployment or further scope is implied by this list.
+Updated 2026-11-26. The owner rejected the tactical loop and selected solo
+MMORPG-style exploration, combat, quests and character progression as the next
+direction. This replaces the tactical backlog; it does not expand current scope.
 
 ## Owner playtest questions
 
-1. Can you identify Ash, the seal and the exit without the field guide?
-2. Is it clear when moving still leaves an action, and why an action is unavailable?
-3. Does the signet and Vesper route feel like using a stolen identity?
-4. Does choosing fire feel powerful enough to justify losing cover?
-5. Are the prisoners people worth extracting, or just another objective counter?
-6. Can you predict a guard's next turn and use that knowledge?
-7. Does the inspection create pressure at the right time?
-8. After the ending, do you want to try the other route?
+1. Does controlling Ash directly feel like the kind of game you wanted?
+2. Is the first trip from Rook to Vesper clear without coaching?
+3. Are fighting, dodging and healing satisfying, and is the red danger area clear?
+4. Do loot and talent points make the character feel stronger?
+5. Does Vesper's bargain feel consequential when the prisoners return to camp?
+6. Do you want another region after the Arbiter, or more depth in this one?
 
-## FFT-inspired follow-up questions
+## Tune before expanding
 
-- Do the three contracts feel different enough despite sharing terrain?
-- Are limited techniques an interesting choice, or are players hoarding all uses?
-- Does Pinning shot make its movement-only effect clear before confirmation?
-- Does the enemy queue help decide whom to handle first?
-- Is the high-ground damage bonus legible without opening the field guide?
-- Do saved best rounds and honor collections create a reason for another attempt?
+Observe a first attempt, especially early navigation, targeting, focus use and
+quest discovery. Compare sword, fire and health builds with different approaches
+to optional encounters. Scripted journeys prove completion, not player enjoyment
+or long-term balance. Check whether ordinary fights are too repetitive and
+whether the Arbiter requires enough movement at the player's attained level.
 
-## Tune before adding content
+The next content step could connect the Conclave houses to distinct regions and
+quest chains. Decide that after owner feedback on the rebuilt core loop. Longer
+campaigns, party companions, crafting and live multiplayer are separate work.
 
-- Observe a first attempt without coaching; note the first hesitation, mistaken
-  click and overlooked objective. Improve those cues before adding tutorials.
-- Compare completion round, deaths, embers spent, rescue outcome and moments
-  of indecision between routes. The scripted oath route ends in round 5; the
-  scripted fire route ends in round 9. Both rescue two prisoners with six
-  survivors after the critical-play revision. These are examples, not
-  difficulty targets or player performance data.
-- Watch whether round-4 inspection now gives the oath route enough escort
-  pressure. It must clear the exit while keeping the house neutral.
-- Tune enemy damage, healing, arrival timing and path visibility together.
-  Keep forecasts exact and enemy targets stable within the player's turn.
-- Add clearer action feedback or stronger individual silhouettes only where
-  the playtest shows information is being missed.
+## Before another release
 
-## Before a later deployment
-
-- Keep the trial as the default entry and preserve the original campaign link.
-  Use live playtest feedback to decide future changes.
-- Verify Safari/Firefox and a real touch device if mobile support is desired;
-  manifest still declares supportsMobile false.
-- Review the existing dependency audit findings and qualify any upgrades in
-  a separate change. No dependency versions were changed for this prototype.
-- Run the full checks and verify both entries under the portal mount.
-- Publish through the standard GitHub workflow; pushing main triggers deployment.
-  The owner authorized iterative publication on 2026-11-26.
+Preserve all three entries and their separate saves. Keep source CI, rule tests,
+built-browser journeys and live deployment verification. Use the canonical
+GitHub workflow; never copy artifacts into the portal. Qualify Safari/Firefox
+and physical touch devices before claiming support. Review dependency upgrades
+separately from this gameplay change.

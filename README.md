@@ -1,139 +1,73 @@
-# Cinderborn — The Ashen Causeway
+# Cinderborn — A Borrowed Name
 
-A small, complete tactical trial about a stolen noble identity, forbidden fire,
-and the cost of getting people out alive. The default entry is the Ashen
-Causeway trial; Contracts & records offers two additional authored encounters. The original Conclave campaign remains at `conclave.html`, with its
-existing save separate from the trial.
+A solo action RPG about Ash, an exile carrying a dead noble's signet and a
+forbidden flame. Explore a continuous world, fight in real time, complete quests,
+find equipment, gain levels and decide what your promise to Vesper is worth.
 
-## Play locally
+## Play
 
 ```sh
 npm ci
 npm run dev -- --host 127.0.0.1 --port 5178 --strictPort
 ```
 
-Open http://127.0.0.1:5178/ in a desktop browser. Saves belong to that browser
-and origin: keep using the same hostname and port to continue a run.
+Open http://127.0.0.1:5178/ in a desktop browser. The default entry is the RPG.
+`trial.html` retains the hex tactical trial; `conclave.html` retains the original
+Conclave campaign. Each uses its own save namespace.
 
-Publication uses the standard GitHub path: a push to `main` triggers the shared
-deploy workflow, canonical portal ingest and an auto-merging portal PR. Verify
-its checks and the live game page after publishing. Never copy build files into
-the portal by hand.
+- **WASD / arrows:** move. **Click ground:** walk there. **Click enemy:** engage.
+- **Space / 1:** steel. **2:** Firebrand. **3:** Mend. **4:** Veilstep dodge.
+- **E:** interact. **Q:** healing draught. **Tab:** cycle nearby targets.
+- **C / I:** character and inventory. **J:** journal. **M:** world map.
+- **Escape:** pause/close menu. **F:** fullscreen. Sound defaults off.
 
-## Contracts and replay
+Begin at Emberrest, speak to Rook, then explore. Iona and Sable provide useful
+side activities. Vesper offers her seal in exchange for rescuing two prisoners;
+refusing requires defeating the Seal Warden. Both paths lead to the Arbiter
+and the Conclave road. The region stays playable after the chapter's ending.
 
-- **The Ashen Causeway:** the full bargain-or-fire encounter; inspection round 4,
-  deadline 12, swift-escape target 5.
-- **The Last Light:** the oath is already sworn, both prisoners are in your band,
-  and inspection is present from the start; deadline 6, target 3.
-- **Ashfall:** the checkpoint has fallen and cover is broken; inspection round 3,
-  deadline 10, target 9. The prisoners remain an optional risk.
+Levels grant talent points. Equip weapons and armor in Character. Read enemy
+red attack areas, move or Veilstep out before impact, and manage regenerating
+focus and cooldowns. Rest at a hearth to restore health and three draughts.
+Discovered hearths unlock fast travel outside combat. Defeat preserves progress.
 
-Use **Contracts & records** from the title or menu to select a run. Beginning a
-contract replaces the current run. Wins, fastest rounds and cumulative honors
-persist separately in `cinderborn-records-v1`; reloading a win never counts twice.
-Honors reward both prisoners safe, no allies lost, meeting the speed target and
-intact cover (an ember left instead of cover in Ashfall).
+## Persistence and scope
 
-## The original trial
+`cinderborn-rpg-v1` saves position, health, levels, XP, equipment, talents, quests,
+collectibles, enemies and cooldowns. It saves every second, after transactions
+and when leaving the page. Reload does not award completed quests twice. Invalid
+saves recover to a new journey; unavailable storage is visibly reported.
 
-- Command Ash, Rook, Sable and Iona on a 61-hex map. Each can move once and
-  take one action each round. An action ends the unit's activation.
-- Secure the trial seal and extract Ash at the eastern exit before ending
-  round 12. Ash's death loses immediately.
-- Keep cover: present the stolen signet at the checkpoint, then speak to
-  Vesper within two hexes. Her bargain gives you the seal, permission to free
-  both captives, but binds you to escort Mara and
-  Brann beside the exit. A captive's death breaks the oath.
-- Break cover: Firebrand burns the gate or hits an enemy within two hexes.
-  Defeat the Seal warden to take the shrine’s seal. Attacking house units or
-  using Firebrand alarms the guards. Steel against Arbiters preserves cover.
-  At 50 suspicion, Ash is exposed and Firebrand damage rises from 5 to 7.
-- Embercraft costs one of four embers; only one spell per round. Mend heals
-  7 within three hexes and adds 15 suspicion; Firebrand adds 40 suspicion.
-  Iona's adjacent Bandage heals 5 without spending embers or raising suspicion.
-- Captives can also be freed after their jailer falls. Rescued allies act
-  next round. A full band preserves a rescue in reserve instead of discarding it.
-- Arbiters arrive at marked beacons in round 4, even after the bargain.
-  They contest the exit: clear every hostile within 1 hex before extracting.
-  They hunt your band even with intact cover. Occupied beacons use the nearest
-  free tile. Their first attack follows their displayed intent next round.
-- Each Warden, Archer and Herald has **two class technique uses per run**.
-  Bulwark guards the caster and adjacent allies. Pinning shot deals one less
-  normal damage without retaliation and cancels the target's movement for this
-  enemy phase; it can still strike its declared hex if in range. Field dressing
-  heals 4 HP within three hexes; adjacent Bandage remains unlimited.
-- Marked high ground grants **+1 ranged damage** against lower targets, already
-  included in the combat forecast. Melee and spells get no height bonus.
-- The numbered queue shows the actual enemy resolution order. Click an entry
-  to inspect its target and plan.
-- Enemy intentions target fixed hexes. Move away to evade. Forest absorbs
-  1 damage, Guard absorbs 2, cliffs block normal shots. Surviving defenders
-  retaliate if they can reach the attacker. Inspect the exact forecast first.
+This is a solo opening region with MMORPG-inspired exploration, questing and
+progression. It has no live multiplayer, accounts or server dependency. Desktop
+Chromium is the verified target; narrow layouts are checked, but mobile support
+is not claimed. See `RPG_DESIGN.md` for the gameplay decisions and story mapping.
+Earlier tactical design and controls are documented in `TACTICAL_TRIAL.md`.
 
-Click portraits or figures to select. Click an enemy to inspect, then Commit
-attack. Contextual interaction buttons appear near gates, captives, Vesper,
-the seal and exit. Blue tiles show reachable ground. Action outcomes appear
-above End round and as floating health changes, with recent history in Field
-journal. The objective banner tracks the next step; Find buttons highlight it.
-Endings award honors for rescues, intact cover and avoiding losses.
-
-Keys: **1–6** select allies, **N** next ready ally, **E** end round, **Z** undo the latest uncommitted
-move, **F** fullscreen, **Escape** cancel targeting or close help/menu.
-Tab navigates controls; arrows plus Q/W navigate hexes; Enter selects.
-Sound defaults off. Play is entirely turn based; no timers run while deciding.
-
-## Save behavior
-
-The trial uses `cinderborn-causeway-v3`. Existing v1/v2 runs migrate without
-erasing their original slots. A v2 run keeps its exact positions, terrain and
-inspection timing and gains class technique charges. A v1 run gets advance
-warning before an earlier inspection. Completed runs keep their ending.
-Every successful action, pending
-choice and result is serialized. Continue restores the same open decision,
-action availability and enemy intents. Starting a new trial asks before
-replacing an existing trial. Corrupt saves fall back to a new trial; blocked
-storage shows a visible warning. Original Conclave saves are not converted.
-
-The original campaign's repaired save retains pending/queued events and
-pacts, resolved choice effects, used powers, actions and discovered heraldry.
-Its canvas has a bounded grid cell and its End Turn control stays outside
-the scrolling panel.
-
-## Development and checks
+## Check and publish
 
 ```sh
-npm run typecheck   # Syntax checks all authored JS (historical script name)
-npm run build      # Builds both trial and original campaign
-npm run lint:paths # Relative asset path check
-npm test           # Pure rules tests, then real built-browser journeys
+npm run typecheck
+npm run build
+npm run lint:paths
+npm test
 ```
 
-Install the Playwright Chromium browser once if needed:
-`npx playwright install chromium`. The browser suite starts a built preview
-on port 4173; keep that port free so it tests this checkout's build.
+The historical `typecheck` script validates JavaScript syntax. Rule tests cover
+combat, movement, navigation, progression, story requirements and persistence.
+Built-browser journeys exercise both story routes through normal game inputs,
+as well as legacy modes. The bundled web-game client provides additional
+movement/combat screenshots and state inspection.
 
-`src/trial/scenario.js` owns the base encounter and unit definitions;
-`contracts.js` sets encounter openings; `abilities.js` owns class techniques;
-`records.js` retains local bests; `briefing.js` renders contracts and enemy order;
-`tactics.js` owns movement, forecasts and intent execution; `actions.js` owns
-plain-data state transitions; `storage.js` validates persistence and migrates old runs; `guidance.js` supplies
-objectives and action explanations; `board.js`
-paints the map; `view.js` renders panels; `main.js` connects input and state.
-`src/main.js` and `src/styles.css` retain the original campaign.
+Push to `main` to publish through the existing shared GitHub deployment workflow.
+It builds all three entries, runs canonical portal ingest and opens an auto-merging
+portal PR. Verify the resulting manifest/assets and production journey. Never
+copy `dist` directly into the portal. Vite `base: "./"` remains required.
 
-No runtime packages, external media or network game services were added.
-`base: "./"` remains required for the portal's `/games/cinderborn/` mount.
-Both entries use relative assets and can be served statically.
+## Code
 
-## Playtest boundary
-
-The automated routes prove completion and persistence, not enjoyment or
-balanced difficulty. This is one map with three authored encounter states, two spell types,
-six active allies maximum, no campaign progression and simple optional sound.
-Desktop Chromium has automated journey coverage; narrow layout is checked,
-but a phone touch playthrough and other browser engines are not yet proven.
-See `IMPROVEMENT_PLAN.md` for what to decide after playing and
-`FFT_INSPIRATION.md` for the research behind the class and information design.
-
-All world names, dialogue and procedural artwork are original to this project.
+`src/rpg/data.js` defines characters/items, `world.js` terrain and navigation,
+`state.js` saves/progression, `story.js` quests/dialogue, `engine.js` real-time
+simulation, `render.js` canvas artwork, `ui.js` panels, and `main.js` input/loop.
+`render_game_to_text` exposes observable state and `advanceTime(ms)` steps the same
+simulation for controlled tests. No runtime dependencies were added.

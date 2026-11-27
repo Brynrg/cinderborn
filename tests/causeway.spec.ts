@@ -102,7 +102,7 @@ test('narrow layout retains controls without horizontal overflow',async({page},i
 });
 
 for(const bad of ['{broken',JSON.stringify({version:1,scenario:'ashen-causeway',units:[{role:'alien'}]})])test(`invalid save recovers to a new trial (${bad.slice(0,10)})`,async({page})=>{
-  await page.goto(URL);await page.evaluate(value=>{localStorage.setItem('cinderborn-causeway-v2',value);localStorage.setItem('cinderborn-save-v3','original-save-marker');},bad);
+  await page.goto(URL);await page.evaluate(value=>{localStorage.setItem('cinderborn-causeway-v3',value);localStorage.setItem('cinderborn-save-v3','original-save-marker');},bad);
   await page.reload();await action(page,'begin');expect((await game(page)).round).toBe(1);
   expect(await page.evaluate(()=>localStorage.getItem('cinderborn-save-v3'))).toBe('original-save-marker');
 });
@@ -129,13 +129,13 @@ test('objective guidance, map inspection, ready selection and specific move erro
 test('a previous-version save resumes its open choice and retains the original backup',async({page})=>{
   await start(page);await hex(page,-1,1);await action(page,'interact:gate');
   const original=await page.evaluate(()=>{
-    const s=JSON.parse(localStorage.getItem('cinderborn-causeway-v2')!);s.version=1;s.inspectionRound=6;
-    const text=JSON.stringify(s);localStorage.setItem('cinderborn-causeway-v1',text);localStorage.removeItem('cinderborn-causeway-v2');return text;
+    const s=JSON.parse(localStorage.getItem('cinderborn-causeway-v3')!);s.version=1;s.inspectionRound=6;
+    const text=JSON.stringify(s);localStorage.setItem('cinderborn-causeway-v1',text);localStorage.removeItem('cinderborn-causeway-v3');return text;
   });
   await page.reload();await expect(page.getByRole('dialog')).toContainText('band and choices are preserved');
   await action(page,'continue');await expect(page.getByRole('dialog')).toContainText('borrowed name');
   await action(page,'choose:signet');const s=await game(page);
-  expect(s).toMatchObject({version:2,gateOpen:true,inspectionRound:4,suspicion:10});
+  expect(s).toMatchObject({version:3,gateOpen:true,inspectionRound:4,suspicion:10});
   expect(await page.evaluate(()=>localStorage.getItem('cinderborn-causeway-v1'))).toBe(original);
   await resume(page);expect((await game(page)).gateOpen).toBe(true);
 });

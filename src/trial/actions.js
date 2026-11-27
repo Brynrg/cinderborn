@@ -1,4 +1,6 @@
-import { GATE, SEAL, EXIT, ENTRIES, MAX_ROUND, DIRS, makeUnit, key, same, distance, living, unitAt, freed, safeCaptives, log } from './scenario.js';
+import { GATE, SEAL, EXIT, ENTRIES, DIRS, makeUnit, key, same, distance, living, unitAt, freed, safeCaptives, log } from './scenario.js';
+import { useTechnique } from './abilities.js';
+import { contractFor, deadline } from './contracts.js';
 import { actionError } from './guidance.js';
 import { paths, forecast, attack, walkable, enemyPhase, planEnemies, sealWarden, exitBlockers } from './tactics.js';
 
@@ -14,7 +16,7 @@ function finish(s,won,reason) {
   s.result={won,reason,round:s.round,freed:freed(s),safe:safeCaptives(s).length,survivors:living(s).filter(u=>u.side==='ally').length,
     route:s.exposed?'Unmasked':s.oath?'Oathkeeper':'Seal breaker',
     fallen:s.units.filter(u=>u.side==='ally'&&u.hp<=0).map(u=>u.name),
-    honors:won?[...(safeCaptives(s).length===2?['Both prisoners safe']:[]),...(!s.hostile?['Cover intact']:[]),...(s.units.filter(u=>u.side==='ally'&&u.hp>0).length===4+freed(s)?['No allies lost']:[])]:[]};
+    honors:won?[...(safeCaptives(s).length===2?['Both prisoners safe']:[]),...(s.contract==='ashfall'?(s.embers>0?['Embers to spare']:[]):(!s.hostile?['Cover intact']:[])),...(s.round<=contractFor(s).par?['Swift escape']:[]),...(s.units.filter(u=>u.side==='ally'&&u.hp>0).length===4+freed(s)?['No allies lost']:[])]:[]};
   log(s,reason);
 }
 export function checkOutcome(s) {
@@ -89,8 +91,8 @@ function endRound(s) {
   const losses=()=>before.map(u=>{const after=s.units.find(x=>x.id===u.id);return after.hp<=0?`${u.name} fell`:after.hp<u.hp?`${u.name} −${u.hp-after.hp} HP`:null;}).filter(Boolean);
   let arrival=false;
   enemyPhase(s);checkOutcome(s);if(s.phase!=='playing')return;
-  if(s.round>=MAX_ROUND) {finish(s,false,'The twelfth bell sounds. The judges seal every road out.');return;}
-  s.round++;s.powerUsed=false;
+  if(s.round>=deadline(s)) {finish(s,false,'The final bell sounds. The judges seal every road out.');return;}
+  s.round++;s.powerUsed=false;for(const u of s.units)u.pinned=false;
   for(const u of living(s).filter(u=>u.side==='ally')) {u.moved=false;u.acted=false;u.guarding=false;}
   if(!s.inspectionArrived && s.round>=s.inspectionRound) {
     s.inspectionArrived=true;arrival=true;
@@ -124,6 +126,10 @@ export function dispatch(state,a) {
     } else if(a.type==='attack' && !u.acted) {
       const e=living(s).find(x=>x.id===a.target);
       if(e&&forecast(s,u,e)) {if(e.side==='house'){s.hostile=true;pressure(s,15);}ok=attack(s,u,e);}
+    } else if(a.type==='technique'&&!u.acted){
+      const target=living(s).find(x=>x.id===a.target);
+      ok=useTechnique(s,u,target);
+      if(ok&&u.role==='bow'&&target?.side==='house'){s.hostile=true;pressure(s,15);}
     } else if(a.type==='guard' && !u.acted) {u.guarding=true;spend(u);log(s,`${u.name} guards: −2 incoming damage until next round.`);ok=true;}
     else if(a.type==='bandage' && u.role==='healer' && !u.acted) {
       const ally=living(s).find(x=>x.id===a.target);
@@ -132,7 +138,7 @@ export function dispatch(state,a) {
     else if(a.type==='magic')ok=magic(s,u,a);
   }
   if(!ok)return {state,error:actionError(state,a)};
-  if(!wasHostile && s.hostile)planEnemies(s,state.intents);
+  if(!wasHostile && s.hostile){planEnemies(s,state.intents);for(const i of s.intents){const e=s.units.find(u=>u.id===i.id);if(e.pinned){i.path=[];i.to={q:e.q,r:e.r};}}}
   if(!keepUndo)s.undo=null;
   s.actions++;checkOutcome(s);
   return {state:s,error:null};

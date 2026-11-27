@@ -1,3 +1,4 @@
+import { TECHNIQUES, techniquePreview } from './abilities.js';
 import { GATE, SEAL, EXIT, ENTRIES, same, key, living, ROLES, distance } from './scenario.js';
 import { paths, sealWarden, exitBlockers } from './tactics.js';
 
@@ -17,8 +18,9 @@ function text(g,str,x,y,size,color=C.ink,font='Georgia') {g.fillStyle=color;g.fo
 function terrain(g,t,p,s) {
   const {x,y}=p;
   hex(g,x,y+4,s*.96);g.fillStyle='#9e9e86';g.fill();
-  hex(g,x,y,s*.96);g.fillStyle=t.terrain==='water'?C.water:t.terrain==='forest'?'#c6ceaf':C.paper;
+  hex(g,x,y,s*.96);g.fillStyle=t.terrain==='water'?C.water:t.terrain==='forest'?'#c6ceaf':t.height?'#eee2b9':C.paper;
   g.fill();g.strokeStyle='#bbb69e';g.lineWidth=.8;g.stroke();
+  if(t.height){hex(g,x,y,s*.78);g.strokeStyle='#99804e';g.lineWidth=1.5;g.stroke();text(g,'↑',x+s*.52,y-s*.33,10,'#785e2f','system-ui');}
   if(t.terrain==='water') {
     for(let r=-2;r<=2;r++) {g.beginPath();g.moveTo(x-s*.55,y+r*s*.23);g.quadraticCurveTo(x,y+r*s*.23-5,x+s*.55,y+r*s*.23);g.strokeStyle='#bad0c3';g.stroke();}
   } else if(t.terrain==='forest') {
@@ -81,6 +83,7 @@ function piece(g,u,p,s,selected,targeted) {
   g.globalAlpha=1;
   const hw=r*1.8;g.fillStyle='#f5edda';g.fillRect(x-hw/2,y+r+1,hw,3);g.fillStyle=ally?'#497e6b':C.red;g.fillRect(x-hw/2,y+r+1,hw*u.hp/u.maxHp,3);
   text(g,({'north-jailer':'Gaoler N','south-jailer':'Gaoler S',lookout:'Lookout',sealguard:'Warden'})[u.id]||u.name,x,y+r+13,Math.max(8,Math.min(10,s*.28)),C.ink,'system-ui');
+  if(u.pinned)text(g,'×',x+r,y-r,14,C.red,'system-ui');
   if(u.guarding)text(g,'◆',x-r,y+4,10,C.gold);
   if(ally&&!u.acted)circle(g,x+r-1,y-r+2,3.5,'#e9bf67',C.ink);
   g.restore();
@@ -109,7 +112,7 @@ export function drawBoard(canvas,state,{hover=null,targetId=null,showThreats=tru
   }
   if(focus){const p=point(v,focus);hex(g,p.x,p.y,v.s*.97);g.strokeStyle=C.gold;g.lineWidth=4;g.stroke();}
   if(mode&&u){
-    const targets=living(state).filter(t=>mode==='firebrand'?t.side!=='ally'&&distance(u,t)<=2:t.side==='ally'&&t.hp<t.maxHp&&distance(u,t)<=(mode==='mend'?3:1));
+    const targets=living(state).filter(t=>mode==='technique'?(TECHNIQUES[u.role]?.id==='bulwark'?t.side==='ally'&&distance(u,t)<=1:!!techniquePreview(state,u,t)):mode==='firebrand'?t.side!=='ally'&&distance(u,t)<=2:t.side==='ally'&&t.hp<t.maxHp&&distance(u,t)<=(mode==='mend'?3:1));
     if(mode==='firebrand'&&!state.gateOpen&&distance(u,GATE)<=2)targets.push(GATE);
     for(const t of targets){const p=point(v,t);circle(g,p.x,p.y,v.s*.73,mode==='firebrand'?'#ad4b3520':'#417b7a25',mode==='firebrand'?C.red:'#417b7a');}
   }

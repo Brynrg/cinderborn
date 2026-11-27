@@ -98,3 +98,41 @@ parts, tests, and republication through GitHub. Starting from clean 8482b34.
 - Version 0.4.0-trial.2. Publication authorized; follow the canonical GitHub
   pipeline and confirm both routes on the resulting production build. Owner
   enjoyment and actual-device usability remain open playtest questions.
+
+## FFT-inspired pacing and replay revision — 2026-11-26
+
+Owner requested another playthrough, improvements to pacing/choices/replayability,
+testing and GitHub republication; then asked to research Final Fantasy Tactics
+and use its gameplay/UI as inspiration. A fresh live oath playthrough again won
+in round 5: three mostly movement rounds, one coordinated confrontation, extraction.
+The structure is legible but repeat starts and class choices need more variety.
+
+Implementing: three authored contracts with different opening states/deadlines;
+limited class techniques (Bulwark, Pinning shot, Field dressing); high ground with
+exact ranged damage forecasts; numbered enemy resolution queue; local records,
+best rounds and cumulative honors. Keep original characters/artwork and hex rules.
+Research: official Square Enix product site and release article describe job/ability
+combinations, terrain strategy, turn-order visibility and tactical view. See
+FFT_INSPIRATION.md for the adaptation and source links. Tests/play balance pending.
+
+- Implemented three authored contracts, class techniques, high ground, enemy
+  action order, local wins/best rounds/honors, and v1/v2-to-v3 save migration.
+- UI playthroughs complete Last Light in round 3 and Ashfall in round 9, both
+  with six survivors, both prisoners safe and all four contract honors. Last
+  Light uses Pinning shot to cancel an approach, then a coordinated finish;
+  Ashfall uses Bulwark to reduce incoming damage. Ordinary attacks, healing,
+  spell timing, hostage rescue and extraction remain meaningful choices.
+- Replayed both full-trial routes through normal controls: oath round 5 and
+  fire round 9. Tests reload after techniques/decisions/endings, check exact
+  costs and damage, and ensure reloads do not double-count wins.
+- Fixed a clipped technique confirmation by using a compact targeting inspector;
+  arranged contract cards across desktop so Begin stays visible. Inspected
+  1280x720 screenshots, six-member rosters, 390px narrow layout, high-ground
+  markers, enemy queue, previews and ending/record screens. Skill client ran
+  against the final local game; no runtime errors were reported.
+- Release checks: Pass — 31 rule/persistence tests and 19 browser tests,
+  18-file syntax check, production build, relative-path lint and diff check.
+  Version 0.4.0-trial.3. Publication remains the canonical GitHub pipeline;
+  final production identity and four live journeys will be recorded separately.
+- Limits: deterministic encounters on one map; no campaign/job advancement yet.
+  Owner enjoyment, exhaustive balance and physical-phone testing remain Not Proven.

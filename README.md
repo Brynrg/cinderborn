@@ -2,7 +2,7 @@
 
 A small, complete tactical trial about a stolen noble identity, forbidden fire,
 and the cost of getting people out alive. The default entry is the Ashen
-Causeway prototype. The original Conclave campaign remains at `conclave.html`, with its
+Causeway trial; Contracts & records offers two additional authored encounters. The original Conclave campaign remains at `conclave.html`, with its
 existing save separate from the trial.
 
 ## Play locally
@@ -20,7 +20,22 @@ deploy workflow, canonical portal ingest and an auto-merging portal PR. Verify
 its checks and the live game page after publishing. Never copy build files into
 the portal by hand.
 
-## The trial
+## Contracts and replay
+
+- **The Ashen Causeway:** the full bargain-or-fire encounter; inspection round 4,
+  deadline 12, swift-escape target 5.
+- **The Last Light:** the oath is already sworn, both prisoners are in your band,
+  and inspection is present from the start; deadline 6, target 3.
+- **Ashfall:** the checkpoint has fallen and cover is broken; inspection round 3,
+  deadline 10, target 9. The prisoners remain an optional risk.
+
+Use **Contracts & records** from the title or menu to select a run. Beginning a
+contract replaces the current run. Wins, fastest rounds and cumulative honors
+persist separately in `cinderborn-records-v1`; reloading a win never counts twice.
+Honors reward both prisoners safe, no allies lost, meeting the speed target and
+intact cover (an ember left instead of cover in Ashfall).
+
+## The original trial
 
 - Command Ash, Rook, Sable and Iona on a 61-hex map. Each can move once and
   take one action each round. An action ends the unit's activation.
@@ -43,6 +58,15 @@ the portal by hand.
   They contest the exit: clear every hostile within 1 hex before extracting.
   They hunt your band even with intact cover. Occupied beacons use the nearest
   free tile. Their first attack follows their displayed intent next round.
+- Each Warden, Archer and Herald has **two class technique uses per run**.
+  Bulwark guards the caster and adjacent allies. Pinning shot deals one less
+  normal damage without retaliation and cancels the target's movement for this
+  enemy phase; it can still strike its declared hex if in range. Field dressing
+  heals 4 HP within three hexes; adjacent Bandage remains unlimited.
+- Marked high ground grants **+1 ranged damage** against lower targets, already
+  included in the combat forecast. Melee and spells get no height bonus.
+- The numbered queue shows the actual enemy resolution order. Click an entry
+  to inspect its target and plan.
 - Enemy intentions target fixed hexes. Move away to evade. Forest absorbs
   1 damage, Guard absorbs 2, cliffs block normal shots. Surviving defenders
   retaliate if they can reach the attacker. Inspect the exact forecast first.
@@ -61,9 +85,10 @@ Sound defaults off. Play is entirely turn based; no timers run while deciding.
 
 ## Save behavior
 
-The trial uses `cinderborn-causeway-v2`. Existing v1 runs migrate without
-erasing their original slot; ongoing runs get at least one round of warning
-before an earlier inspection. Completed runs keep their ending.
+The trial uses `cinderborn-causeway-v3`. Existing v1/v2 runs migrate without
+erasing their original slots. A v2 run keeps its exact positions, terrain and
+inspection timing and gains class technique charges. A v1 run gets advance
+warning before an earlier inspection. Completed runs keep their ending.
 Every successful action, pending
 choice and result is serialized. Continue restores the same open decision,
 action availability and enemy intents. Starting a new trial asks before
@@ -88,7 +113,9 @@ Install the Playwright Chromium browser once if needed:
 `npx playwright install chromium`. The browser suite starts a built preview
 on port 4173; keep that port free so it tests this checkout's build.
 
-`src/trial/scenario.js` owns the authored encounter and unit definitions;
+`src/trial/scenario.js` owns the base encounter and unit definitions;
+`contracts.js` sets encounter openings; `abilities.js` owns class techniques;
+`records.js` retains local bests; `briefing.js` renders contracts and enemy order;
 `tactics.js` owns movement, forecasts and intent execution; `actions.js` owns
 plain-data state transitions; `storage.js` validates persistence and migrates old runs; `guidance.js` supplies
 objectives and action explanations; `board.js`
@@ -102,10 +129,11 @@ Both entries use relative assets and can be served statically.
 ## Playtest boundary
 
 The automated routes prove completion and persistence, not enjoyment or
-balanced difficulty. This is one authored encounter, with two spell types,
+balanced difficulty. This is one map with three authored encounter states, two spell types,
 six active allies maximum, no campaign progression and simple optional sound.
 Desktop Chromium has automated journey coverage; narrow layout is checked,
 but a phone touch playthrough and other browser engines are not yet proven.
-See `IMPROVEMENT_PLAN.md` for what to decide after playing.
+See `IMPROVEMENT_PLAN.md` for what to decide after playing and
+`FFT_INSPIRATION.md` for the research behind the class and information design.
 
 All world names, dialogue and procedural artwork are original to this project.

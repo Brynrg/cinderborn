@@ -1,19 +1,23 @@
 # Cinderborn status
 
-Updated 2026-11-26. Version 0.4.0-trial.2; critical playtest revision.
+Updated 2026-11-26. Version 0.4.0-trial.3; FFT-inspired contracts and class techniques.
 
+- **Pass:** three contracts with distinct starts, deadlines and speed targets;
+  limited class techniques, high-ground damage/forecasts, numbered enemy order,
+  and persistent wins/best rounds/honors. Last Light completes in 3 rounds;
+  Ashfall in 9, both with all six allies alive and both prisoners safe.
 - **Pass:** the solo round-4 shortcut is closed. The shrine requires defeating
-  its warden or gaining Vesper’s seal. Inspection arrives in round 4 and nearby
+  its warden or gaining Vesper’s seal. In the full trial, inspection arrives in round 4 and nearby
   hostiles prevent extraction. Steel against Arbiters keeps house cover intact.
 - **Pass:** enemy plans reserve destinations and follow reachable paths; their
   declared target tiles remain fixed throughout the player’s turn.
 - **Pass:** objective links, explicit activation budgets, Next ready selection,
   contextual explanations, exact health forecasts, damage/heal feedback,
   survivor honors, desktop layout and a scrollable narrow layout.
-- **Pass:** v1 saves migrate into v2 without modifying the original slot.
+- **Pass:** v1/v2 saves migrate into v3 without modifying the original slot.
   Pending choices, used actions, damaged units and completed endings persist.
   Original Conclave remains available at `conclave.html` with separate saves.
-- **Pass:** 21 rule/persistence tests and 15 browser tests, syntax validation,
+- **Pass:** 31 rule/persistence tests and 19 browser tests, syntax validation,
   production build and relative-path lint. Normal-control journeys complete the
   oath route in round 5 and the combat route in round 9, each with six survivors
   and both prisoners rescued. These are demonstrated solutions, not minimums.
@@ -32,5 +36,5 @@ it does not trigger another publication.
 
 Vanilla JavaScript, HTML and CSS on the locked Vite toolchain. Two entries,
 relative asset paths, no runtime packages or external artwork. Deterministic,
-one-encounter tactics with six active allies maximum and browser-local saves.
+three-contract tactics on one map with six active allies maximum and browser-local saves.
 The existing dependency audit findings remain outside this gameplay change.

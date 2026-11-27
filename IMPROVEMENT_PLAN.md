@@ -2,7 +2,7 @@
 
 Updated 2026-11-26. This replaces the inherited game-template backlog.
 
-The immediate goal is to judge one playable encounter before expanding it.
+Judge the three contract openings and class techniques before expanding to a campaign.
 No deployment or further scope is implied by this list.
 
 ## Owner playtest questions
@@ -15,6 +15,15 @@ No deployment or further scope is implied by this list.
 6. Can you predict a guard's next turn and use that knowledge?
 7. Does the inspection create pressure at the right time?
 8. After the ending, do you want to try the other route?
+
+## FFT-inspired follow-up questions
+
+- Do the three contracts feel different enough despite sharing terrain?
+- Are limited techniques an interesting choice, or are players hoarding all uses?
+- Does Pinning shot make its movement-only effect clear before confirmation?
+- Does the enemy queue help decide whom to handle first?
+- Is the high-ground damage bonus legible without opening the field guide?
+- Do saved best rounds and honor collections create a reason for another attempt?
 
 ## Tune before adding content
 

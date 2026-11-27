@@ -21,15 +21,16 @@ export const ROLES = {
 export function makeUnit(id, name, role, side, q, r) {
   const def = ROLES[role];
   return { id, name, role, side, q, r, hp:def.hp, maxHp:def.hp, atk:def.atk,
-    range:def.range, move:def.move, moved:false, acted:false, guarding:false, reserve:false };
+    range:def.range, move:def.move, moved:false, acted:false, guarding:false, reserve:false, charges:2, pinned:false };
 }
 export function createTrial() {
   const forest = new Set(['-3,0','-2,-1','-3,3','1,-3','2,1','2,-3']);
   const rocks = new Set(['-4,1','-1,-3','1,-1','2,2']);
+  const highGround=new Set(['-1,-1','3,-1','2,-2']);
   const tiles = [];
   for (let q=-RADIUS;q<=RADIUS;q++) for(let r=Math.max(-RADIUS,-q-RADIUS);r<=Math.min(RADIUS,-q+RADIUS);r++) {
     const k = `${q},${r}`;
-    tiles.push({q,r,terrain:q===0 && r!==0 && r!==2 ? 'water' : rocks.has(k) ? 'rock' : forest.has(k) ? 'forest' : 'ground'});
+    tiles.push({q,r,height:highGround.has(k)?1:0,terrain:q===0 && r!==0 && r!==2 ? 'water' : rocks.has(k) ? 'rock' : forest.has(k) ? 'forest' : 'ground'});
   }
   const units = [
     makeUnit('ash','Ash','ash','ally',-3,2), makeUnit('rook','Rook','shield','ally',-3,1),
@@ -41,7 +42,7 @@ export function createTrial() {
     makeUnit('vesper','Vesper','champion','house',2,-1),
     makeUnit('sealguard','Seal warden','shield','house',3,-3),
   ];
-  return { version:2, scenario:'ashen-causeway', phase:'playing', round:1, selected:'ash', tiles, units,
+  return { version:3, contract:'causeway', deadline:12, scenario:'ashen-causeway', phase:'playing', round:1, selected:'ash', tiles, units,
     suspicion:0, hostile:false, exposed:false, gateOpen:false, seal:false, embers:4, powerUsed:false,
     oath:false, bargain:'none', pending:null, inspectionRound:4, inspectionArrived:false, intents:[],
     captives:[{id:'mara',name:'Mara',role:'bow',q:-1,r:-2,jailer:'north-jailer',freed:false},

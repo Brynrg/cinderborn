@@ -170,7 +170,7 @@ test('v1 saves migrate pending choices without rewriting the old slot or spawnin
   s.pending={kind:'bargain',unitId:'ash'};s.embers=2;unit(s,'ash').hp=8;
   const old=JSON.stringify(s);storage.setItem(PREVIOUS_SAVE_KEY,old);
   const migrated=load(storage);
-  assert.equal(migrated.version,2);assert.equal(migrated.inspectionRound,8);
+  assert.equal(migrated.version,3);assert.equal(migrated.inspectionRound,8);
   assert.deepEqual(migrated.pending,s.pending);assert.deepEqual(migrated.units,s.units);
   assert.equal(migrated.embers,2);assert.match(migrated.migrationNotice,/preserved/);
   assert.ok(save(storage,migrated));assert.equal(storage.getItem(PREVIOUS_SAVE_KEY),old);
@@ -181,7 +181,7 @@ test('completed v1 games retain their ending on migration',()=>{
   const storage=memory();let s=createTrial();for(const a of oathRoute)s=apply(s,a);
   s.version=1;delete s.result.honors;delete s.result.fallen;
   storage.setItem(PREVIOUS_SAVE_KEY,JSON.stringify(s));const migrated=load(storage);
-  assert.equal(migrated.version,2);assert.deepEqual(migrated.result,s.result);
+  assert.equal(migrated.version,3);assert.deepEqual(migrated.result,s.result);
   assert.equal(migrated.migrationNotice,undefined);
   s.result.honors='broken';storage.setItem(SAVE_KEY,JSON.stringify(s));assert.equal(load(storage),null);
 });

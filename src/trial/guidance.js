@@ -1,3 +1,4 @@
+import { TECHNIQUES } from './abilities.js';
 import { GATE, SEAL, EXIT, distance, same, living, unitAt, tileAt, safeCaptives, freed } from './scenario.js';
 import { sealWarden, exitBlockers, lineClear } from './tactics.js';
 
@@ -30,6 +31,7 @@ export function actionError(s,a) {
     if(a.kind==='mend'&&target?.hp>=target?.maxHp)return `${target.name} is already at full health.`;
     return a.kind==='firebrand'?'Choose a living enemy or closed gate within 2 hexes.':'Choose a wounded ally within 3 hexes.';
   }
+  if(a.type==='technique')return !u.charges?'No technique uses remain this run. Normal attacks and Guard are still available.':TECHNIQUES[u.role]?.detail||'This unit has no class technique.';
   if(a.type==='bandage')return target?.hp>=target?.maxHp?`${target.name} is already at full health.`:'Iona can bandage a wounded ally within 1 hex.';
   if(a.type==='interact'){
     if(a.kind==='seal')return sealWarden(s)?'The Seal warden still holds the shrine. Defeat the warden, or secure Vesper’s oath.':'Ash must be within 1 hex of the shrine and still have an action.';

@@ -35,7 +35,8 @@ export function lineClear(s,a,b) {
 export const inRange = (s,a,b) => distance(a,b)<=a.range && lineClear(s,a,b);
 export function damage(s,a,b,bonus=0) {
   const cover=tileAt(s,b)?.terrain==='forest' ? 1 : 0;
-  return Math.max(1,a.atk+bonus-cover-(b.guarding?2:0));
+  const height=a.range>1&&(tileAt(s,a)?.height||0)>(tileAt(s,b)?.height||0)?1:0;
+  return Math.max(1,a.atk+bonus+height-cover-(b.guarding?2:0));
 }
 export function forecast(s,a,b) {
   if(!a||!b||a.side===b.side||!inRange(s,a,b)) return null;
@@ -99,7 +100,7 @@ export function enemyPhase(s) {
     }
     const target=intent.target && unitAt(s,intent.target);
     if(target?.side==='ally' && inRange(s,u,target)) attack(s,u,target);
-    else if(intent.target) log(s,`${u.name}'s strike finds an empty position.`);
+    else if(intent.target) log(s,target?.side==='ally'?`${u.name} cannot reach the marked ally.`:`${u.name}'s strike finds an empty position.`);
     if(!living(s).some(x=>x.id==='ash')) break;
   }
 }
